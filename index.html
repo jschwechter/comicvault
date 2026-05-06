@@ -251,16 +251,25 @@ textarea{resize:vertical;min-height:60px;line-height:1.5}
     <!-- SCAN -->
     <div class="screen" id="sScan">
       <span class="sec" style="margin-top:0">Cover photos</span>
-      <div class="photo-area">
-        <div class="photo-slot" id="slot1">
-          <input type="file" id="fi1" accept="image/*" capture="environment" onchange="gotFile(event,1)" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;font-size:16px;z-index:10">
-          <div class="si">📷</div>
-          <div class="sl">Front cover<br><span style="font-size:10px;opacity:.7">Tap to photograph</span></div>
+      <!-- Hidden file inputs -->
+      <input type="file" id="fi1" accept="image/*" capture="environment" style="display:none" onchange="gotFile(event,1)">
+      <input type="file" id="fi2" accept="image/*" capture="environment" style="display:none" onchange="gotFile(event,2)">
+      
+      <!-- Photo preview area -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <div id="preview1" style="aspect-ratio:2/3;background:var(--bg2);border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;overflow:hidden;position:relative">
+            <span id="preview1Icon" style="font-size:24px">📷</span>
+            <img id="preview1Img" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="Front">
+          </div>
+          <button onclick="document.getElementById('fi1').click()" style="width:100%;padding:10px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">📷 Front Cover</button>
         </div>
-        <div class="photo-slot" id="slot2">
-          <input type="file" id="fi2" accept="image/*" capture="environment" onchange="gotFile(event,2)" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;font-size:16px;z-index:10">
-          <div class="si">📷</div>
-          <div class="sl">Back / interior<br><span style="font-size:10px;opacity:.7">Optional — adds data</span></div>
+        <div>
+          <div id="preview2" style="aspect-ratio:2/3;background:var(--bg2);border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;overflow:hidden;position:relative">
+            <span id="preview2Icon" style="font-size:24px">📷</span>
+            <img id="preview2Img" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="Back">
+          </div>
+          <button onclick="document.getElementById('fi2').click()" style="width:100%;padding:10px;background:var(--bg2);color:var(--text);border:0.5px solid var(--border2);border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">📷 Back / Wrap</button>
         </div>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:12px">For slabs, get the label clearly. For wraparound covers, photograph both sides.</div>
@@ -810,33 +819,24 @@ function trigSlot(n){document.getElementById('fi'+n).click();}
 async function gotFile(e,slot){
   try {
     const files = e.target.files;
-    if(!files||files.length===0){console.log('No file selected');return;}
+    if(!files||files.length===0){return;}
     const file = files[0];
-    if(!file){console.log('File is null');return;}
-    console.log('Got file:', file.name, file.size, file.type);
+    if(!file){return;}
     
     const compressed = await compressImg(file, 420, 0.72);
     imgs[slot] = compressed;
     
-    const sl = document.getElementById('slot'+slot);
-    sl.classList.add('has');
+    // Show preview
+    const icon = document.getElementById('preview'+slot+'Icon');
+    const img = document.getElementById('preview'+slot+'Img');
+    if(icon) icon.style.display='none';
+    if(img){img.src=compressed;img.style.display='block';}
     
-    // Remove old image if exists
-    const oldImg = sl.querySelector('img');
-    if(oldImg) oldImg.remove();
-    
-    // Create new image
-    const im = document.createElement('img');
-    im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:5';
-    im.src = compressed;
-    sl.appendChild(im);
-    
-    console.log('Image set for slot', slot);
+    toast('Photo captured! '+(slot===1?'Analyzing...':'Added back cover.'));
     
     if(slot===1) analyzeComic();
     else if(slot===2 && imgs[1]) analyzeComic();
   } catch(err) {
-    console.error('gotFile error:', err);
     toast('Photo error: ' + err.message);
   }
 }
@@ -1262,10 +1262,10 @@ function editComic(id){
 }
 
 function setSlotImg(n,src){
-  const sl=document.getElementById('slot'+n);sl.classList.add('has');
-  let im=sl.querySelector('img');
-  if(!im){im=document.createElement('img');im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover';sl.appendChild(im);}
-  im.src=src;
+  const icon=document.getElementById('preview'+n+'Icon');
+  const img=document.getElementById('preview'+n+'Img');
+  if(icon)icon.style.display='none';
+  if(img){img.src=src;img.style.display='block';}
 }
 
 function delComic(id){
@@ -1483,9 +1483,11 @@ function exportCSV(){
 function clearScan(){
   imgs={1:null,2:null};editId=null;pendingDupId=null;
   [1,2].forEach(n=>{
-    const sl=document.getElementById('slot'+n);sl.classList.remove('has');
-    const im=sl.querySelector('img');if(im)im.remove();
     document.getElementById('fi'+n).value='';
+    const icon=document.getElementById('preview'+n+'Icon');
+    const img=document.getElementById('preview'+n+'Img');
+    if(icon)icon.style.display='block';
+    if(img){img.style.display='none';img.src='';}
   });
   document.getElementById('scanForm').classList.remove('on');
   document.getElementById('scanForm').style.opacity='1';
