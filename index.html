@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ComicVault">
+<title>ComicVault</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --red:#E24B4A;--red-d:#A32D2D;--red-l:#FCEBEB;
+  --gold:#EF9F27;--gold-d:#BA7517;--gold-l:#FAEEDA;
+  --teal:#1D9E75;--teal-l:#E1F5EE;
+  --blue:#378ADD;--blue-l:#E6F1FB;
+  --purple:#7F77DD;--purple-l:#EEEDFE;
+  --orange:#E8783A;--orange-l:#FEF0E7;
+  --bg:#fff;--bg2:#f5f5f3;--bg3:#eeede8;
+  --text:#111;--muted:#666;--hint:#999;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);
+  --r:12px;--rs:8px;--rx:6px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1a1a1a;--bg2:#242424;--bg3:#2e2e2e;--text:#f0f0f0;--muted:#aaa;--hint:#777;
+  --border:rgba(255,255,255,0.12);--border2:rgba(255,255,255,0.22);
+  --red-l:#3a1515;--gold-l:#2a1f08;--teal-l:#0a2018;--blue-l:#0a1e30;--purple-l:#1a1830;--orange-l:#2a1a08;}
+}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg3);color:var(--text);font-size:15px}
+.app{display:flex;flex-direction:column;height:100%;height:100dvh}
+.topbar{background:#1a1a1a;color:#fff;display:flex;align-items:center;padding:0 14px;height:52px;flex-shrink:0;gap:10px}
+.topbar h1{font-size:20px;font-weight:700;letter-spacing:2px;color:var(--red)}
+.pill{font-size:11px;padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:5px;flex-shrink:0}
+.pill.ok{background:#0a2a1a;color:#5DCAA5}
+.pill.busy{background:#2a2010;color:var(--gold)}
+.pill.err{background:#2a0a0a;color:#F09595}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.ml{margin-left:auto}
+.icon-btn{background:transparent;border:0.5px solid rgba(255,255,255,0.25);border-radius:var(--rx);color:#fff;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+.nav{background:var(--bg);border-top:0.5px solid var(--border);display:flex;height:60px;flex-shrink:0}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;position:relative}
+.nb.on{color:var(--red)}
+.nb svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nb .rdot{position:absolute;top:8px;right:calc(50% - 16px);width:7px;height:7px;border-radius:50%;background:var(--orange);border:1.5px solid var(--bg)}
+.screen{display:none;padding:14px}
+.screen.on{display:block}
+.card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.card h2{font-size:15px;font-weight:600;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted);line-height:1.6}
+.lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+input,select,textarea{width:100%;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--rs);background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;outline:none;-webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--red)}
+textarea{resize:vertical;min-height:60px;line-height:1.5}
+.mb{margin-bottom:10px}
+.btn{width:100%;padding:13px;border-radius:var(--rs);border:none;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.red{background:var(--red);color:#fff}
+.btn.out{background:transparent;border:0.5px solid var(--border2);color:var(--text)}
+.btn.teal{background:var(--teal);color:#fff}
+.btn-sm{padding:7px 13px;font-size:12px;font-weight:500;width:auto;border-radius:var(--rx);cursor:pointer;font-family:inherit;border:0.5px solid var(--border2);background:transparent;color:var(--text)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.sec{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;padding-bottom:6px;border-bottom:0.5px solid var(--border);display:block}
+.sw-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid var(--border)}
+.sw-row:last-child{border-bottom:none}
+.sw-lbl{font-size:14px}.sw-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.sw{position:relative;width:44px;height:26px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw-t{position:absolute;inset:0;border-radius:13px;background:var(--border2);cursor:pointer;transition:background .2s}
+.sw input:checked+.sw-t{background:var(--teal)}
+.sw-t::after{content:"";position:absolute;width:20px;height:20px;background:#fff;border-radius:50%;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw input:checked+.sw-t::after{left:21px}
+.ac-wrap{position:relative;margin-bottom:10px}
+.ac-wrap input{margin-bottom:0}
+.ac-dd{position:absolute;top:100%;left:0;right:0;background:var(--bg);border:0.5px solid var(--border2);border-top:none;border-radius:0 0 var(--rs) var(--rs);z-index:200;max-height:200px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+.ac-dd.show{display:block}
+.ac-item{padding:10px 12px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--border)}
+.ac-item:last-child{border-bottom:none}
+.ac-item:active{background:var(--red-l)}
+.ac-main{font-weight:500}.ac-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.ac-loading{padding:10px 12px;font-size:12px;color:var(--muted);font-style:italic}
+.multi-wrap{margin-bottom:10px}
+.multi-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.tag{display:flex;align-items:center;gap:5px;background:var(--blue-l);border:0.5px solid var(--blue);border-radius:20px;padding:4px 10px;font-size:12px;color:#0C447C}
+.tag button{background:none;border:none;color:#0C447C;cursor:pointer;font-size:14px;padding:0;line-height:1}
+.multi-row{display:flex;gap:6px}
+.multi-row input{margin:0;flex:1}
+.add-btn{padding:0 14px;background:var(--blue);color:#fff;border:none;border-radius:var(--rs);font-size:20px;cursor:pointer;flex-shrink:0}
+.type-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
+.tb{padding:9px 4px;border:0.5px solid var(--border2);border-radius:var(--rs);background:var(--bg2);text-align:center;font-size:12px;font-weight:500;cursor:pointer;line-height:1.3}
+.tb.raw{background:var(--red);color:#fff;border-color:var(--red-d)}
+.tb.signed{background:var(--purple);color:#fff;border-color:#534AB7}
+.tb.slabbed{background:var(--blue);color:#fff;border-color:#185FA5}
+.ltd-box{background:var(--gold-l);border:1px solid var(--gold);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px}
+.ltd-hdr{font-size:11px;font-weight:700;color:var(--gold-d);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.storage-box{background:var(--teal-l);border:1px solid var(--teal);border-radius:var(--rs);padding:10px 12px;margin-bottom:10px}
+.storage-hdr{font-size:11px;font-weight:700;color:#0F5038;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.photo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.pslot{position:relative}
+.pprev{aspect-ratio:2/3;background:var(--bg2);border:1.5px dashed var(--border2);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:6px;position:relative}
+.pprev img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+.pprev .sicon{font-size:20px}
+.pbtn{width:100%;padding:8px 4px;border:none;border-radius:var(--rx);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;line-height:1.3}
+.pbtn.front{background:var(--red);color:#fff}
+.pbtn.back{background:var(--bg2);color:var(--text);border:0.5px solid var(--border2)}
+.pbtn.label{background:var(--blue);color:#fff}
+input[type=file]{display:none}
+.ai-box{border-radius:var(--rs);padding:10px 12px;font-size:13px;margin-bottom:12px;line-height:1.5;display:none}
+.ai-ok{background:var(--teal-l);border:0.5px solid var(--teal);color:#0F5038}
+.ai-warn{background:var(--gold-l);border:0.5px solid var(--gold-d);color:#412402}
+.ai-err{background:var(--red-l);border:0.5px solid var(--red);color:var(--red-d)}
+.cw{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cbar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.cfill{height:100%;border-radius:2px;transition:width .5s}
+.scan-form{display:none}.scan-form.on{display:block}
+.lbl-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.lbl-opt{padding:7px 9px;border:0.5px solid var(--border2);border-radius:var(--rx);cursor:pointer;display:flex;align-items:center;gap:7px;font-size:12px}
+.lbl-opt.sel{border-color:var(--red);background:var(--red-l)}
+.lbl-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.dup-box{background:var(--bg);border:2px solid var(--gold);border-radius:var(--r);padding:14px;margin-bottom:12px;display:none}
+.dup-box.on{display:block}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.sc{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rs);padding:10px 12px}
+.sc .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.sc .v{font-size:20px;font-weight:600;margin-top:2px}
+.filters{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.chip{padding:6px 12px;border-radius:20px;border:0.5px solid var(--border2);background:var(--bg2);font-size:12px;white-space:nowrap;cursor:pointer;flex-shrink:0}
+.chip.on{background:var(--red);color:#fff;border-color:var(--red-d)}
+.chip.needs{background:var(--orange-l);border-color:var(--orange);color:var(--orange)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cc{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rs);overflow:hidden;cursor:pointer}
+.cc:active{opacity:.7}
+.cc.nr{border-color:var(--orange);border-width:1.5px}
+.ct{aspect-ratio:2/3;background:var(--bg3);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.ct img{width:100%;height:100%;object-fit:cover}
+.ti{font-size:24px;color:var(--muted)}
+.qb{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.78);color:#fff;font-size:10px;font-weight:700;padding:2px 5px;border-radius:4px}
+.bb{position:absolute;bottom:4px;right:4px;background:rgba(29,158,117,0.85);color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px}
+.lb{position:absolute;bottom:4px;left:4px;background:rgba(239,159,39,0.92);color:#412402;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px}
+.rb{position:absolute;top:4px;left:4px;background:rgba(232,120,58,0.9);color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
+.pip{position:absolute;top:4px;left:4px;width:8px;height:8px;border-radius:50%}
+.pip-r{background:var(--muted)}.pip-s{background:var(--purple)}.pip-g{background:var(--blue)}
+.ci{padding:5px 6px 6px}
+.ct-title{font-size:10px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-sub{font-size:9px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kd{width:5px;height:5px;border-radius:50%;background:var(--red);display:inline-block;margin-right:2px;vertical-align:middle}
+.rp{display:none}
+@media(min-width:768px){
+  .rp{display:block;background:var(--orange-l);border:1.5px solid var(--orange);border-radius:var(--r);padding:16px;margin-bottom:16px}
+  .rp h2{font-size:14px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+  .ri{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rs);padding:12px;margin-bottom:8px}
+  .ri:last-child{margin-bottom:0}
+  .ri-title{font-size:13px;font-weight:600;margin-bottom:4px}
+  .ri-q{font-size:12px;color:var(--orange);margin-bottom:8px;line-height:1.4}
+  .ri-notes{width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--rx);font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);resize:none;min-height:50px;outline:none}
+  .ri-save{padding:5px 12px;font-size:12px;font-weight:500;border-radius:var(--rx);border:none;background:var(--orange);color:#fff;cursor:pointer;font-family:inherit;margin-top:6px}
+  .grid{grid-template-columns:repeat(5,1fr)}
+  .stats{grid-template-columns:repeat(4,1fr)}
+}
+.back-btn{background:none;border:none;color:var(--red);font-size:15px;font-weight:600;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px;margin-bottom:12px}
+.dh{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
+.dt{width:80px;height:115px;object-fit:cover;border-radius:var(--rx);flex-shrink:0}
+.dtp{width:80px;height:115px;border-radius:var(--rx);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;margin-right:4px;margin-bottom:4px}
+.b-raw{background:var(--bg3);color:var(--muted)}.b-sig{background:var(--purple-l);color:#3C3489}
+.b-slab{background:var(--blue-l);color:#0C447C}.b-key{background:var(--red-l);color:var(--red-d)}
+.b-ltd{background:var(--gold-l);color:var(--gold-d)}.b-box{background:var(--teal-l);color:#0F5038}
+.b-nr{background:var(--orange-l);color:var(--orange)}
+.dtbl{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.dth{padding:8px 12px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:0.5px solid var(--border);background:var(--bg2)}
+.dr{display:flex;justify-content:space-between;align-items:baseline;padding:9px 12px;border-bottom:0.5px solid var(--border);font-size:13px;gap:10px}
+.dr:last-child{border-bottom:none}
+.dr .dl{color:var(--muted);flex-shrink:0}.dr .dv{text-align:right;word-break:break-word}
+.rd{background:var(--orange-l);border:1.5px solid var(--orange);border-radius:var(--r);padding:14px;margin-bottom:12px;display:none}
+.rd.on{display:block}
+.rd h3{font-size:12px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.rq{background:var(--bg);border-radius:var(--rx);padding:10px 12px;margin-bottom:8px;border:0.5px solid var(--border)}
+.rq-q{font-size:13px;color:var(--orange);font-weight:500;line-height:1.4}
+.sw-wrap{display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
+.sw-wrap.on{display:flex}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:sp .8s linear infinite;margin-bottom:14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;z-index:999;max-width:88vw;text-align:center;line-height:1.4}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <h1>COMICVAULT</h1>
+    <div class="pill ok" id="pill"><div class="dot"></div><span id="pillTxt">Ready</span></div>
+    <button class="icon-btn ml" onclick="goSettings()">&#9881;</button>
+  </div>
+  <div class="content" id="content">
+
+    <div class="screen on" id="sSetup">
+      <div class="card">
+        <h2>&#128075; Welcome to ComicVault</h2>
+        <p style="margin-bottom:14px">Paste your Claude API key. The AI reads your comic covers, verifies details online, and fills everything in automatically.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+          <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--muted)"><div style="background:var(--red);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">1</div><div>Go to <strong style="color:var(--text)">console.anthropic.com</strong> &rarr; API Keys &rarr; Create Key &rarr; copy the key</div></div>
+          <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--muted)"><div style="background:var(--red);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">2</div><div>Paste it below and tap Connect</div></div>
+        </div>
+        <div class="mb"><div class="lbl">Claude API Key</div><input type="password" id="setupKey" placeholder="sk-ant-..."></div>
+        <button class="btn red" onclick="doSetup()">Connect &rarr;</button>
+        <div id="setupMsg" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.5"></div>
+      </div>
+      <div class="card" style="background:var(--blue-l);border-color:var(--blue)">
+        <h2 style="font-size:14px;color:var(--blue)">&#128241; iPhone: Add to Home Screen</h2>
+        <p style="color:#0C447C">Safari &rarr; Share &rarr; Add to Home Screen &rarr; Add. Opens like a real app with no browser bar.</p>
+      </div>
+    </div>
+
+    <div class="screen" id="sScan">
+      <span class="sec" style="margin-top:0">Cover photos</span>
+      <input type="file" id="fi1" accept="image/*" capture="environment" onchange="gotFile(event,1)">
+      <input type="file" id="fi2" accept="image/*" capture="environment" onchange="gotFile(event,2)">
+      <input type="file" id="fi3" accept="image/*" capture="environment" onchange="gotFile(event,3)">
+      <div class="photo-grid">
+        <div class="pslot">
+          <div class="pprev" id="prev1"><div class="sicon">&#128247;</div><img id="img1" alt="Front"></div>
+          <button class="pbtn front" onclick="document.getElementById('fi1').click()">&#128247; Front</button>
+        </div>
+        <div class="pslot">
+          <div class="pprev" id="prev2"><div class="sicon">&#128247;</div><img id="img2" alt="Back"></div>
+          <button class="pbtn back" onclick="document.getElementById('fi2').click()">&#128247; Back</button>
+        </div>
+        <div class="pslot" id="slotLabel">
+          <div class="pprev" id="prev3"><div class="sicon">&#127991;</div><img id="img3" alt="Label"></div>
+          <button class="pbtn label" onclick="document.getElementById('fi3').click()">&#128247; Label</button>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;background:var(--blue-l);border:0.5px solid var(--blue);border-radius:8px;padding:8px 12px;line-height:1.6"><strong style="color:var(--blue)">Tips:</strong> Slabs &rarr; front + label close-up &middot; Raw &rarr; front + back if credits are there &middot; Angle to avoid glare is fine</div>
+
+      <div class="sw-wrap" id="scanSpin">
+        <div class="spin"></div>
+        <div style="font-weight:600;margin-bottom:4px" id="spinMsg">Claude is reading your comic...</div>
+        <div style="font-size:12px;color:var(--muted)" id="spinSub">Identifying title, grade, signatures, verifying online...</div>
+      </div>
+
+      <div class="dup-box" id="dupBox">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:6px;color:var(--gold-d)">&#9888;&#65039; Already in your collection</h3>
+        <p id="dupMsg" style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.4"></p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn teal" onclick="doMerge()">Add to existing count</button>
+          <button class="btn" style="background:var(--purple-l);color:#3C3489;border:none;font-family:inherit;font-size:15px;font-weight:600;padding:13px;border-radius:8px;cursor:pointer" onclick="doKeep()">Keep as separate entry</button>
+          <button class="btn out" onclick="doCancel()">Cancel</button>
+        </div>
+      </div>
+
+      <div class="scan-form" id="scanForm">
+        <div id="aiBox" class="ai-box"></div>
+        <div class="cw" id="confWrap" style="display:none">
+          <span style="font-size:12px;color:var(--muted);min-width:110px" id="confLbl">Confidence: &mdash;</span>
+          <div class="cbar"><div class="cfill" id="confFill" style="width:0%"></div></div>
+        </div>
+
+        <span class="sec">Copy type</span>
+        <div class="type-row">
+          <div class="tb" id="tbR" onclick="setType('raw')">&#128230; Raw</div>
+          <div class="tb" id="tbS" onclick="setType('signed')">&#9998;&#65039; Signed</div>
+          <div class="tb" id="tbG" onclick="setType('slabbed')">&#128311; Slabbed</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:-4px;margin-bottom:12px;line-height:1.4" id="typeHint"></div>
+
+        <div class="storage-box">
+          <div class="storage-hdr">&#128230; Storage location</div>
+          <div id="stRaw"><div class="lbl">Raw box #</div><input type="text" id="f_rawbox" placeholder="e.g. Box 12"></div>
+          <div id="stSign" style="display:none"><div class="lbl">Signed box #</div><input type="text" id="f_signbox" placeholder="e.g. Signed Box 3"></div>
+          <div id="stSlab" style="display:none"><div class="lbl">Slab box #</div><input type="text" id="f_slabbox" placeholder="e.g. Slab Box 5"></div>
+        </div>
+
+        <span class="sec">Comic details</span>
+        <div class="ac-wrap">
+          <div class="lbl">Title / Series</div>
+          <input type="text" id="f_title" placeholder="Type to search series..." autocomplete="off" oninput="onTitleInput()" onblur="hideAC('titleAC')">
+          <div class="ac-dd" id="titleAC"></div>
+        </div>
+        <div class="two mb">
+          <div><div class="lbl">Issue #</div><input type="text" id="f_issue" placeholder="300" oninput="onIssueInput()"></div>
+          <div><div class="lbl">Volume</div><input type="text" id="f_volume" placeholder="Vol. 1"></div>
+        </div>
+        <div class="two mb">
+          <div>
+            <div class="ac-wrap" style="margin-bottom:0">
+              <div class="lbl">Publisher</div>
+              <input type="text" id="f_publisher" placeholder="Zenescope..." autocomplete="off" oninput="onPublisherInput()" onblur="hideAC('publisherAC')">
+              <div class="ac-dd" id="publisherAC"></div>
+            </div>
+          </div>
+          <div><div class="lbl">Cover Date</div><input type="text" id="f_date" placeholder="May 1988"></div>
+        </div>
+        <div class="two mb">
+          <div><div class="lbl">Cover Price</div><input type="text" id="f_coverprice" placeholder="$3.99"></div>
+          <div><div class="lbl">Variant Letter</div><input type="text" id="f_varletter" placeholder="e.g. L" oninput="onVarLetterInput()"></div>
+        </div>
+        <div class="mb"><div class="lbl">Cover Variant / Description</div><input type="text" id="f_variant" placeholder="NCW Gold Foil, Cosplay, Virgin..."></div>
+        <div class="mb"><div class="lbl">Cover Type</div>
+          <select id="f_covertype">
+            <option value="">Standard</option><option value="Cosplay">Cosplay</option>
+            <option value="Virgin">Virgin (no trade dress)</option><option value="Foil">Foil</option>
+            <option value="Blank Sketch">Blank Sketch</option><option value="Original Art">Original Artwork (1-of-1)</option>
+            <option value="Metal">Metal cover</option><option value="Connecting">Connecting cover (set)</option>
+            <option value="Wraparound">Wraparound</option><option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="multi-wrap">
+          <div class="lbl">Cover Artist(s)</div>
+          <div class="multi-tags" id="artistTags"></div>
+          <div class="multi-row">
+            <div style="position:relative;flex:1">
+              <input type="text" id="f_art" placeholder="Add artist..." autocomplete="off" oninput="onArtistInput()" onkeydown="onMK(event,'artist')" onblur="hideAC('artistAC')" style="margin:0">
+              <div class="ac-dd" id="artistAC"></div>
+            </div>
+            <button class="add-btn" onclick="addTag('artist')">+</button>
+          </div>
+        </div>
+
+        <div class="multi-wrap">
+          <div class="lbl">Writer(s)</div>
+          <div class="multi-tags" id="writerTags"></div>
+          <div class="multi-row">
+            <div style="position:relative;flex:1">
+              <input type="text" id="f_wri" placeholder="Add writer..." autocomplete="off" oninput="onWriterInput()" onkeydown="onMK(event,'writer')" onblur="hideAC('writerAC')" style="margin:0">
+              <div class="ac-dd" id="writerAC"></div>
+            </div>
+            <button class="add-btn" onclick="addTag('writer')">+</button>
+          </div>
+        </div>
+
+        <div class="mb"><div class="lbl">Key Issue Significance</div><input type="text" id="f_key" placeholder="1st app. Venom &mdash; leave blank if none"></div>
+
+        <div class="multi-wrap">
+          <div class="lbl">Featured Characters</div>
+          <div class="multi-tags" id="charTags"></div>
+          <div class="multi-row">
+            <div style="position:relative;flex:1">
+              <input type="text" id="f_char" placeholder="Add character..." autocomplete="off" oninput="onCharInput()" onkeydown="onMK(event,'char')" onblur="hideAC('charAC')" style="margin:0">
+              <div class="ac-dd" id="charAC"></div>
+            </div>
+            <button class="add-btn" onclick="addTag('char')">+</button>
+          </div>
+        </div>
+
+        <div class="mb"><div class="lbl">Story Arc</div><input type="text" id="f_arc" placeholder="Leave blank if none"></div>
+
+        <div class="card" style="padding:12px;margin-bottom:10px">
+          <div class="sw-row"><div><div class="sw-lbl">Wraparound cover</div><div class="sw-sub">Front and back form one continuous image</div></div><label class="sw"><input type="checkbox" id="f_wrap"><span class="sw-t"></span></label></div>
+          <div class="sw-row"><div><div class="sw-lbl">Info on back cover</div><div class="sw-sub">Credits or numbering on back</div></div><label class="sw"><input type="checkbox" id="f_backinfo"><span class="sw-t"></span></label></div>
+        </div>
+
+        <span class="sec">Limited edition</span>
+        <div class="ltd-box">
+          <div class="ltd-hdr">&#127942; Fill in only what applies &mdash; leave the rest blank</div>
+          <div class="three mb">
+            <div><div class="lbl">Print Run</div><input type="number" id="f_printrun" placeholder="350"></div>
+            <div><div class="lbl">Copy # (yours)</div><input type="number" id="f_copynum" placeholder="47"></div>
+            <div><div class="lbl">Numbering</div><select id="f_numtype"><option value="">N/A</option><option>Hand-numbered</option><option>Stamped</option><option>Certified</option><option>COA</option><option>Edition-wide signed</option></select></div>
+          </div>
+          <div class="two mb">
+            <div><div class="lbl">Set position</div><input type="text" id="f_setpos" placeholder="1 of 2"></div>
+            <div><div class="lbl">Total covers in set</div><input type="number" id="f_settotal" placeholder="2"></div>
+          </div>
+          <div class="mb"><div class="lbl">Companion cover(s)</div><input type="text" id="f_companions" placeholder="e.g. Cover 2 features the Coyote"></div>
+          <div class="mb"><div class="lbl">Edition type</div>
+            <select id="f_edtype">
+              <option value="">Unknown / N/A</option>
+              <option value="Convention Exclusive">Convention Exclusive</option>
+              <option value="Livestream Exclusive">Livestream Exclusive</option>
+              <option value="Store Exclusive">Store Exclusive</option>
+              <option value="Retailer Exclusive">Retailer Exclusive</option>
+              <option value="Staff Exclusive">Staff Exclusive</option>
+              <option value="NCW Exclusive">NCW Exclusive</option>
+              <option value="Kickstarter">Kickstarter</option>
+              <option value="Subscription">Subscription / Collectors Club</option>
+              <option value="Diamond">Diamond Retailer</option>
+              <option value="Artist Proof">Artist Proof (AP)</option>
+              <option value="Publisher Direct">Publisher Direct</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="mb"><div class="lbl">Event / Source name</div><input type="text" id="f_event" placeholder="e.g. February 2021 Roadrunner Play Livestream, NYCC 2014"></div>
+          <div class="mb"><div class="lbl">Edition notes</div><input type="text" id="f_editnotes" placeholder="Gold foil logo, cosplay character, etc."></div>
+          <div><div class="lbl">How was edition info confirmed?</div>
+            <select id="f_infoSrc"><option value="cover">Visible on cover</option><option value="label">Visible on slab label</option><option value="both">Cover + label</option><option value="researched">Researched online</option><option value="user">Known by collector</option><option value="partial">Partially confirmed</option></select>
+          </div>
+        </div>
+
+        <div id="sigSec" style="display:none">
+          <span class="sec">Signature info</span>
+          <div class="mb"><div class="lbl">Signature type</div>
+            <select id="f_sigtype" onchange="onSigType()">
+              <option value="witnessed">Real &mdash; Witnessed (CGC SS, CBCS Witnessed)</option>
+              <option value="unwitnessed">Real &mdash; Unwitnessed (no cert)</option>
+              <option value="edition-wide">Real &mdash; Edition-wide (all copies signed)</option>
+              <option value="facsimile">Printed / Facsimile (part of artwork, not real)</option>
+            </select>
+          </div>
+          <div id="sigNameWrap" class="mb"><div class="lbl">Signed by (multiple OK)</div><input type="text" id="f_signedby" placeholder="e.g. Elias Chatzoudis, Joe Brusha"></div>
+          <div id="sigAuthWrap" class="mb"><div class="lbl">Authentication</div>
+            <select id="f_auth">
+              <option value="CGC SS">CGC Signature Series (witnessed)</option>
+              <option value="CGC x JSA">CGC &times; JSA (JSA authenticated)</option>
+              <option value="CBCS Witnessed">CBCS Witnessed</option>
+              <option value="CBCS Verified">CBCS Verified Signature</option>
+              <option value="JSA">JSA Certified</option>
+              <option value="Beckett">Beckett BAS</option>
+              <option value="Unwitnessed">Unwitnessed &mdash; no authentication</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="mb">
+            <div class="sw-row" style="border:none;padding:0;margin-bottom:8px">
+              <div><div class="sw-lbl" style="font-size:13px">Artist added sketch or drawing</div><div class="sw-sub">Small drawing added by signer</div></div>
+              <label class="sw"><input type="checkbox" id="f_hasSketch" onchange="onSketchToggle()"><span class="sw-t"></span></label>
+            </div>
+            <div id="sketchWrap" style="display:none"><div class="lbl">Describe the sketch</div><textarea id="f_sketchDesc" placeholder="e.g. Small head sketch of Sela Mathers..."></textarea></div>
+          </div>
+          <div class="mb"><div class="lbl">Inscription / remarks</div><input type="text" id="f_inscription" placeholder="e.g. To John, Best Wishes &mdash; leave blank if none"></div>
+        </div>
+
+        <div id="manSigWrap" style="margin-bottom:10px">
+          <div class="card" style="padding:12px">
+            <div class="sw-row" style="border:none;padding:0">
+              <div><div class="sw-lbl">&#9998;&#65039; Mark as signed</div><div class="sw-sub">AI didn't detect a sig &mdash; tap if this copy has one</div></div>
+              <label class="sw"><input type="checkbox" id="manSig" onchange="onManSig()"><span class="sw-t"></span></label>
+            </div>
+          </div>
+        </div>
+
+        <div id="rawSec">
+          <span class="sec">Raw copy info</span>
+          <div class="two mb">
+            <div><div class="lbl">Condition</div>
+              <select id="f_cond">
+                <option>Gem Mint 10.0</option><option>Mint 9.9</option><option>NM/MT 9.8</option><option>NM+ 9.6</option>
+                <option>NM 9.4</option><option>NM- 9.2</option><option>VF/NM 9.0</option><option>VF+ 8.5</option>
+                <option>VF 8.0</option><option>FN/VF 7.0</option><option>FN 6.0</option><option>VG 4.0</option>
+                <option>GD 2.0</option><option>FR 1.0</option><option>PR 0.5</option>
+              </select>
+            </div>
+            <div><div class="lbl">Quantity</div><input type="number" id="f_qty" value="1" min="1"></div>
+          </div>
+        </div>
+
+        <div id="signSec" style="display:none">
+          <span class="sec">Signed copy info</span>
+          <div class="mb"><div class="lbl">Condition</div><select id="f_scond"><option>NM/MT 9.8</option><option>NM+ 9.6</option><option>NM 9.4</option><option>NM- 9.2</option><option>VF/NM 9.0</option><option>VF 8.0</option><option>FN 6.0</option></select></div>
+        </div>
+
+        <div id="slabSec" style="display:none">
+          <span class="sec">Slab info</span>
+          <div class="mb"><div class="lbl">Grading company</div>
+            <select id="f_grader" onchange="onGrader()">
+              <option value="CGC">CGC &mdash; Certified Guaranty Co.</option>
+              <option value="CBCS">CBCS &mdash; Comic Book Certification</option>
+              <option value="PGX">PGX &mdash; Professional Grading Experts</option>
+              <option value="PSA">PSA &mdash; Professional Sports Auth.</option>
+              <option value="Other">Other / Unknown</option>
+            </select>
+          </div>
+          <div class="mb">
+            <div class="lbl">Label type <span id="lblPill" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:#4A7FBF;color:#fff;margin-left:6px">Universal</span></div>
+            <div class="lbl-grid" id="lblGrid"></div>
+          </div>
+          <div class="two mb">
+            <div><div class="lbl">Numeric grade</div><input type="text" id="f_grade" placeholder="9.8"></div>
+            <div><div class="lbl">Page quality</div><select id="f_pages"><option value="">Unknown</option><option>White</option><option>Off-White/White</option><option>Off-White</option><option>Cream/Off-White</option><option>Cream</option><option>Light Tan</option><option>Tan</option><option>Brittle</option></select></div>
+          </div>
+          <div class="mb"><div class="lbl">Serial / Cert #</div><input type="text" id="f_serial" placeholder="4257387005"></div>
+          <div id="cgcRestore" style="display:none" class="mb"><div class="lbl">CGC Restoration grade</div><select id="f_restore"><option value="">N/A</option><option>A-1 Slight Professional</option><option>A-2 Moderate Professional</option><option>A-3 Extensive Professional</option><option>B-1 Slight Amateur</option><option>B-2 Moderate Amateur</option><option>B-3 Extensive Amateur</option></select></div>
+        </div>
+
+        <span class="sec">Purchase &amp; value</span>
+        <div class="two mb">
+          <div><div class="lbl">Purchase $</div><input type="number" id="f_buy" step="0.01" placeholder="0.00"></div>
+          <div><div class="lbl">Purchase Date</div><input type="date" id="f_buydate"></div>
+        </div>
+        <div class="two mb">
+          <div><div class="lbl">Source</div><input type="text" id="f_src" placeholder="eBay, LCS, Con..."></div>
+          <div><div class="lbl">Declared Value $</div><input type="number" id="f_dval" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="two mb">
+          <div><div class="lbl">Est. Market $</div><input type="number" id="f_mkt" step="0.01" placeholder="0.00"></div>
+          <div><div class="lbl">Sale Price $</div><input type="number" id="f_sold" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="mb"><div class="lbl">Sale Date</div><input type="date" id="f_solddate"></div>
+        <div class="mb"><div class="lbl">Notes</div><textarea id="f_notes" placeholder="Storage details, provenance, defects, con notes..."></textarea></div>
+
+        <button class="btn red mb" onclick="saveComic()">Save to Collection</button>
+        <button class="btn out mb" onclick="clearScan()">Clear / Start over</button>
+        <div style="height:20px"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="sGallery">
+      <div class="rp" id="researchPanel" style="display:none">
+        <h2>&#128269; Needs Research <span id="researchCount" style="background:var(--orange);color:#fff;border-radius:20px;padding:2px 9px;font-size:12px;margin-left:6px">0</span></h2>
+        <div id="researchList"></div>
+      </div>
+      <div class="stats">
+        <div class="sc"><div class="l">Total Copies</div><div class="v" id="stTotal">0</div></div>
+        <div class="sc"><div class="l">Unique Issues</div><div class="v" id="stUnique">0</div></div>
+        <div class="sc"><div class="l">Invested</div><div class="v" id="stInvest">$0</div></div>
+        <div class="sc"><div class="l">Est. Value</div><div class="v" id="stVal">$0</div></div>
+      </div>
+      <div class="mb"><input type="text" id="srch" placeholder="Search title, box #, artist, grader, event..." oninput="renderGallery()" style="margin:0"></div>
+      <div class="filters">
+        <div class="chip on" onclick="setF('all',this)">All</div>
+        <div class="chip" onclick="setF('raw',this)">Raw</div>
+        <div class="chip" onclick="setF('signed',this)">Signed</div>
+        <div class="chip" onclick="setF('slabbed',this)">Slabbed</div>
+        <div class="chip" onclick="setF('keys',this)">Key Issues</div>
+        <div class="chip" onclick="setF('ltd',this)">Limited Ed.</div>
+        <div class="chip" onclick="setF('cgc',this)">CGC</div>
+        <div class="chip" onclick="setF('cbcs',this)">CBCS</div>
+        <div class="chip needs" onclick="setF('research',this)" id="researchChip" style="display:none">&#128269; Needs Research</div>
+      </div>
+      <div class="sw-wrap" id="galSpin"><div class="spin"></div><div>Loading...</div></div>
+      <div class="empty" id="galEmpty" style="display:none"><div style="font-size:48px;margin-bottom:12px">&#129464;</div><div style="font-weight:600;margin-bottom:6px">No comics yet</div><div style="font-size:13px">Tap Scan to photograph your first comic</div></div>
+      <div class="grid" id="galGrid"></div>
+    </div>
+
+    <div class="screen" id="sDetail">
+      <button class="back-btn" onclick="goGallery()">&lsaquo; Collection</button>
+      <div id="detailBody"></div>
+    </div>
+
+    <div class="screen" id="sSettings">
+      <div class="card">
+        <h2>&#9881; Settings</h2>
+        <div class="mb"><div class="lbl">Claude API Key</div><input type="password" id="setKey" placeholder="sk-ant-..."></div>
+        <button class="btn red mb" onclick="saveSettings()">Save</button>
+        <button class="btn teal mb" onclick="syncFromSheet()">&#128260; Pull latest from Google Sheet</button>
+        <button class="btn out mb" onclick="exportCSV()">&#128202; Export to CSV / Excel</button>
+        <button class="btn out" onclick="goGallery()">Back to Collection</button>
+      </div>
+      <div class="card"><h2 style="font-size:14px">&#128269; Research flags</h2><p>Flagged records appear at the top of your collection on your laptop with specific questions. On iPhone they're silently marked so scanning stays fast.</p></div>
+      <div class="card"><h2 style="font-size:14px">CGC Label Guide</h2><p>&#128309; Universal &middot; &#128993; Signature Series &middot; &#128993;&#9898; CGC&times;JSA &middot; &#128994; Qualified &middot; &#128995; Restored &middot; &#128996; Pedigree &middot; &#9898; Conserved &middot; &#127912; Custom</p></div>
+    </div>
+
+  </div>
+
+  <div class="nav" id="nav" style="display:none">
+    <button class="nb on" id="nbScan" onclick="goScan()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M6.343 17.657A8 8 0 1117.657 6.343"/></svg>Scan
+    </button>
+    <button class="nb" id="nbGal" onclick="goGallery()">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Collection
+      <div class="rdot" id="navRDot" style="display:none"></div>
+    </button>
+  </div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const WORKER='https://comicvault-api.jschwechter.workers.dev/';
+const SHEET_URL='https://script.google.com/macros/s/AKfycbxINksRBu_hC8ijejF3axBUxo-GcAnIy1QTjRZGrKGP1mEuMkzzraB539uxGuPDOB4B/exec';
+const PUBLISHERS=['Zenescope Entertainment','Marvel Comics','DC Comics','Image Comics','Dark Horse Comics','IDW Publishing','BOOM! Studios','Dynamite Entertainment','Valiant Comics','AfterShock Comics','AWA Studios','Scout Comics','Vault Comics','Archie Comics','BOOM! Studios'];
+const LABELS={
+  CGC:[
+    {id:'Universal',c:'#4A7FBF',n:'Universal (Blue)',h:'Unrestored, no witnessed signature'},
+    {id:'Signature Series',c:'#D4A017',n:'Signature Series (Yellow)',h:'CGC-witnessed signature'},
+    {id:'CGC x JSA',c:'#1a1a1a',n:'CGC x JSA (Black/Yellow)',h:'Unwitnessed - JSA authenticated'},
+    {id:'Qualified',c:'#3D9A52',n:'Qualified (Green)',h:'Defect noted, or unwitnessed sig'},
+    {id:'Restored',c:'#7B4F9E',n:'Restored (Purple)',h:'Comic has been restored'},
+    {id:'Pedigree',c:'#B8860B',n:'Pedigree (Gold)',h:'From a CGC-recognized pedigree'},
+    {id:'Conserved',c:'#888',n:'Conserved (Gray)',h:'Structural preservation only'},
+    {id:'SS Qualified',c:'#D4A017',n:'SS Qualified',h:'Witnessed sig + noted defect'},
+    {id:'SS Restored',c:'#7B4F9E',n:'SS Restored',h:'Witnessed sig + restoration'},
+    {id:'Custom',c:'#E24B4A',n:'Custom Label',h:'Branded label - Universal grade'},
+    {id:'NG',c:'#888',n:'No Grade (NG)',h:'Missing cover or major pages'},
+    {id:'CVR',c:'#888',n:'Cover Only (CVR)',h:'Cover certified separately'},
+  ],
+  CBCS:[
+    {id:'Universal',c:'#1A5EA6',n:'Universal (Blue)',h:'Unrestored'},
+    {id:'Verified Sig',c:'#D4A017',n:'Verified Signature',h:'CBCS-verified signature'},
+    {id:'Witnessed Sig',c:'#D4A017',n:'Witnessed Signature',h:'CBCS-witnessed at event'},
+    {id:'Restored',c:'#7B4F9E',n:'Restored',h:'Comic has been restored'},
+    {id:'Qualified',c:'#3D9A52',n:'Qualified',h:'Notable defect'},
+  ],
+  PGX:[{id:'Standard',c:'#1a1a1a',n:'Standard (Black/Gold)',h:''},{id:'Gold Label',c:'#B8860B',n:'Gold Label',h:'Sig authenticated'},{id:'Restored',c:'#7B4F9E',n:'Restored',h:''}],
+  PSA:[{id:'Standard',c:'#C8161D',n:'Standard (Red)',h:''},{id:'Authentic',c:'#C8161D',n:'Authentic',h:''}],
+  Other:[{id:'Standard',c:'#888',n:'Standard',h:''}]
+};
+
+let coll=[],curType='raw',imgs={1:null,2:null,3:null},curFilter='all',editId=null,pendingDupId=null;
+let artists=[],writers=[],chars=[];
+let acT={};
+
+function ls(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function getKey(){return ls('cv_key')||'';}
+function saveKey(k){lsSet('cv_key',k);}
+function saveColl(){lsSet('cv_coll',JSON.stringify(coll));}
+function setPill(s,m){document.getElementById('pill').className='pill '+s;document.getElementById('pillTxt').textContent=m;}
+
+function doSetup(){
+  const key=document.getElementById('setupKey').value.trim();
+  const msg=document.getElementById('setupMsg');
+  if(!key){showMsg(msg,'err','Please paste your Claude API key.');return;}
+  if(!key.startsWith('sk-ant-')){showMsg(msg,'err','Key should start with sk-ant-');return;}
+  saveKey(key);showMsg(msg,'ok','Connected! Loading ComicVault...');
+  setTimeout(()=>{document.getElementById('nav').style.display='flex';document.getElementById('sSetup').classList.remove('on');goScan();},800);
+}
+function showMsg(el,type,text){
+  const s={ok:{bg:'#E1F5EE',b:'#1D9E75',c:'#0F5038'},err:{bg:'#FCEBEB',b:'#E24B4A',c:'#A32D2D'},info:{bg:'#E6F1FB',b:'#378ADD',c:'#0C447C'}};
+  const t=s[type];el.style.cssText='background:'+t.bg+';border:0.5px solid '+t.b+';color:'+t.c+';border-radius:8px;padding:10px 14px;display:block;font-size:13px;line-height:1.5';
+  el.textContent=text;
+}
+
+function goScan(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sScan').classList.add('on');document.getElementById('nbScan').classList.add('on');}
+function goGallery(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sGallery').classList.add('on');document.getElementById('nbGal').classList.add('on');renderGallery();updateStats();renderResearchPanel();}
+function goSettings(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('sSettings').classList.add('on');document.getElementById('setKey').value=getKey();}
+function saveSettings(){saveKey(document.getElementById('setKey').value.trim());toast('Settings saved');goGallery();}
+
+/* AUTOCOMPLETE */
+function hideAC(id){setTimeout(()=>{const el=document.getElementById(id);if(el)el.classList.remove('show');},200);}
+
+function showACList(id,items){
+  const el=document.getElementById(id);if(!el)return;
+  if(!items||!items.length){el.classList.remove('show');return;}
+  el.innerHTML=items.map(item=>{
+    const v=typeof item==='string'?item:(item.value||item);
+    const l=typeof item==='string'?item:(item.label||item.value||item);
+    const sub=item.sub||'';
+    const fill=item.fill?JSON.stringify(item.fill):'';
+    return `<div class="ac-item" onmousedown="selAC('${id}','${v.replace(/'/g,"\\'")}','${fill.replace(/'/g,"\\'")}')"><div class="ac-main">${esc(l)}</div>${sub?`<div class="ac-sub">${esc(sub)}</div>`:''}</div>`;
+  }).join('');
+  el.classList.add('show');
+}
+
+function selAC(acId,value,fillJson){
+  const map={titleAC:'f_title',publisherAC:'f_publisher',artistAC:'f_art',writerAC:'f_wri',charAC:'f_char'};
+  const inp=document.getElementById(map[acId]);if(inp)inp.value=value;
+  const ac=document.getElementById(acId);if(ac)ac.classList.remove('show');
+  if(fillJson){try{applyFill(JSON.parse(fillJson));}catch(e){}}
+  if(acId==='artistAC')addTag('artist');
+  if(acId==='writerAC')addTag('writer');
+  if(acId==='charAC')addTag('char');
+}
+
+function applyFill(fill){
+  const s=(id,v)=>{if(!v)return;const el=document.getElementById(id);if(el&&!el.value)el.value=v;};
+  s('f_publisher',fill.publisher);s('f_date',fill.date);s('f_coverprice',fill.coverprice);
+  s('f_variant',fill.variant);s('f_key',fill.key);
+  if(fill.artists&&!artists.length)fill.artists.forEach(a=>addTagVal('artist',a));
+  if(fill.writers&&!writers.length)fill.writers.forEach(w=>addTagVal('writer',w));
+  if(fill.chars&&!chars.length)fill.chars.forEach(c=>addTagVal('char',c));
+  if(fill.printrun)s('f_printrun',fill.printrun);
+  if(fill.edtype){const el=document.getElementById('f_edtype');if(el&&!el.value&&el.querySelector(`option[value="${fill.edtype}"]`))el.value=fill.edtype;}
+  if(fill.event)s('f_event',fill.event);
+}
+
+async function callClaude(prompt){
+  const key=getKey();if(!key)return null;
+  const r=await fetch(WORKER,{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-opus-4-5',max_tokens:800,messages:[{role:'user',content:prompt}]})});
+  const d=await r.json();if(d.error)throw new Error(d.error.message);
+  return d.content[0].text.replace(/```json|```/g,'').trim();
+}
+
+function onTitleInput(){
+  const val=document.getElementById('f_title').value.trim();
+  clearTimeout(acT.title);
+  if(val.length<2){hideAC('titleAC');return;}
+  acT.title=setTimeout(async()=>{
+    const ac=document.getElementById('titleAC');
+    ac.innerHTML='<div class="ac-loading">Searching series...</div>';ac.classList.add('show');
+    try{
+      const r=await callClaude(`List up to 8 comic book series whose titles contain "${val}". Focus on Zenescope, Marvel, DC, Image. Return ONLY a JSON array: [{"value":"exact series title","sub":"Publisher, Year","fill":{"publisher":"","date":"","coverprice":""}}]`);
+      showACList('titleAC',JSON.parse(r));
+    }catch(e){document.getElementById('titleAC').classList.remove('show');}
+  },400);
+}
+
+function onPublisherInput(){
+  const val=document.getElementById('f_publisher').value.toLowerCase();
+  const matches=PUBLISHERS.filter(p=>p.toLowerCase().includes(val));
+  showACList('publisherAC',matches.map(p=>({value:p,label:p})));
+}
+
+function onIssueInput(){
+  const title=document.getElementById('f_title').value.trim();
+  const issue=document.getElementById('f_issue').value.trim();
+  if(!title||!issue)return;
+  clearTimeout(acT.issue);
+  acT.issue=setTimeout(async()=>{
+    try{
+      const r=await callClaude(`For the comic "${title}" issue #${issue}, provide details you know. Return ONLY valid JSON: {"date":"cover month year or empty","coverprice":"with $ or empty","key":"key issue significance or empty","artists":["name"],"writers":["name"],"chars":["name"],"confidence":80}`);
+      const d=JSON.parse(r);if(d.confidence>55)applyFill(d);
+    }catch(e){}
+  },700);
+}
+
+function onVarLetterInput(){
+  const title=document.getElementById('f_title').value.trim();
+  const issue=document.getElementById('f_issue').value.trim();
+  const letter=document.getElementById('f_varletter').value.trim();
+  if(!title||!letter)return;
+  clearTimeout(acT.var);
+  acT.var=setTimeout(async()=>{
+    try{
+      const r=await callClaude(`For "${title}" #${issue||'?'} Cover ${letter}, what do you know? Return ONLY valid JSON: {"variant":"description or empty","edtype":"type or empty","printrun":"number or empty","event":"event name or empty","artists":["artist"],"confidence":70}`);
+      const d=JSON.parse(r);
+      if(d.confidence>55){
+        const s=(id,v)=>{if(!v)return;const el=document.getElementById(id);if(el&&!el.value)el.value=v;};
+        s('f_variant',d.variant);s('f_printrun',d.printrun);s('f_event',d.event);
+        if(d.edtype){const el=document.getElementById('f_edtype');if(el&&!el.value&&el.querySelector(`option[value="${d.edtype}"]`))el.value=d.edtype;}
+        if(d.artists&&!artists.length)d.artists.forEach(a=>addTagVal('artist',a));
+        if(d.confidence>70)toast('Auto-filled Cover '+letter+' info');
+      }
+    }catch(e){}
+  },700);
+}
+
+function acMulti(type,inputId,acId,ctx){
+  const val=document.getElementById(inputId).value.trim();
+  clearTimeout(acT[type]);
+  if(val.length<2){hideAC(acId);return;}
+  const pub=document.getElementById('f_publisher').value.trim();
+  const title=document.getElementById('f_title').value.trim();
+  acT[type]=setTimeout(async()=>{
+    const ac=document.getElementById(acId);ac.innerHTML='<div class="ac-loading">Searching...</div>';ac.classList.add('show');
+    try{
+      const r=await callClaude(`List up to 6 ${ctx} names containing "${val}"${pub?' for '+pub:''}${title?' associated with '+title:''}. Return ONLY a JSON array of strings: ["Name 1","Name 2"]`);
+      const items=JSON.parse(r);showACList(acId,items.map(i=>({value:i,label:i})));
+    }catch(e){document.getElementById(acId).classList.remove('show');}
+  },400);
+}
+function onArtistInput(){acMulti('artist','f_art','artistAC','comic book cover artist');}
+function onWriterInput(){acMulti('writer','f_wri','writerAC','comic book writer');}
+function onCharInput(){acMulti('char','f_char','charAC','comic book character');}
+
+function addTag(type){
+  const ids={artist:'f_art',writer:'f_wri',char:'f_char'};
+  const val=document.getElementById(ids[type]).value.trim();
+  if(!val)return;addTagVal(type,val);document.getElementById(ids[type]).value='';hideAC(type+'AC');
+}
+function addTagVal(type,val){
+  const arr={artist:artists,writer:writers,char:chars}[type];
+  if(!arr||arr.includes(val))return;arr.push(val);renderTags(type);
+}
+function removeTag(type,val){
+  const arr={artist:artists,writer:writers,char:chars}[type];
+  const i=arr.indexOf(val);if(i>=0)arr.splice(i,1);renderTags(type);
+}
+function renderTags(type){
+  const arr={artist:artists,writer:writers,char:chars}[type];
+  const id={artist:'artistTags',writer:'writerTags',char:'charTags'}[type];
+  document.getElementById(id).innerHTML=arr.map(v=>`<div class="tag">${esc(v)}<button onclick="removeTag('${type}','${esc(v)}')">x</button></div>`).join('');
+}
+function clearMulti(){artists=[];writers=[];chars=[];['artist','writer','char'].forEach(renderTags);}
+function onMK(e,type){if(e.key==='Enter'||e.key===','){e.preventDefault();addTag(type);}}
+
+async function gotFile(e,slot){
+  try{
+    const files=e.target.files;if(!files||!files.length)return;
+    const file=files[0];if(!file)return;
+    const compressed=await compressImg(file,500,0.75);
+    imgs[slot]=compressed;
+    const icon=document.getElementById('prev'+slot).querySelector('.sicon');
+    const img=document.getElementById('img'+slot);
+    if(icon)icon.style.display='none';if(img){img.src=compressed;img.style.display='block';}
+    toast('Photo '+(slot===1?'front':slot===2?'back':'label')+' captured!');
+    if(imgs[1])analyzeComic();
+  }catch(err){toast('Photo error: '+err.message);}
+}
+
+async function compressImg(file,maxD,q){
+  return new Promise(res=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>h&&w>maxD){h=h*(maxD/w);w=maxD;}else if(h>maxD){w=w*(maxD/h);h=maxD;}
+      const c=document.createElement('canvas');c.width=Math.round(w);c.height=Math.round(h);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg',q));
+    };img.src=url;
+  });
+}
+
+async function analyzeComic(){
+  const key=getKey();
+  if(!key){toast('Add your Claude API key in Settings');document.getElementById('scanForm').classList.add('on');return;}
+  document.getElementById('scanSpin').classList.add('on');
+  document.getElementById('scanForm').classList.remove('on');
+
+  const parts=[];
+  if(imgs[1]){const b=imgs[1].split(',')[1],mt=imgs[1].split(';')[0].split(':')[1];parts.push({type:'image',source:{type:'base64',media_type:mt,data:b}},{type:'text',text:'FRONT cover.'});}
+  if(imgs[2]){const b=imgs[2].split(',')[1],mt=imgs[2].split(';')[0].split(':')[1];parts.push({type:'image',source:{type:'base64',media_type:mt,data:b}},{type:'text',text:'BACK cover.'});}
+  if(imgs[3]){const b=imgs[3].split(',')[1],mt=imgs[3].split(';')[0].split(':')[1];parts.push({type:'image',source:{type:'base64',media_type:mt,data:b}},{type:'text',text:'SLAB LABEL - read every detail very carefully.'});}
+
+  parts.push({type:'text',text:`You are an expert comic book grader. Analyze these images carefully.
+
+RULES:
+- Variant letters are single letters (A,B,C...L etc) on cover or label
+- "1 of 2" = SET POSITION. "Limited to 350" = PRINT RUN. These are different fields
+- Signatures on surfboards/weapons/artwork = FACSIMILE not real
+- Blank sketch cover with hand-drawn art = Original Art 1-of-1
+- CGC Blue label CAN have unwitnessed real signature
+- List ALL artists and writers you can read
+- Page quality is on the CGC/CBCS label text
+- Serial = long number on barcode area of label
+
+Return ONLY valid JSON:
+{"title":"","issue":"","publisher":"","date":"month year","volume":"","coverprice":"","varletter":"single letter or empty","variant":"","covertype":"Standard|Cosplay|Virgin|Foil|Blank Sketch|Original Art|Metal|Connecting|Wraparound|Other","artists":["name1"],"writers":["name1"],"key":"","chars":["name1"],"arc":"","wraparound":false,"backHasInfo":false,"limited":false,"printrun":"","copynum":"","setpos":"","settotal":"","edtype":"","event":"","editionnotes":"","signed":false,"sigtype":"witnessed|unwitnessed|edition-wide|facsimile|empty","signedby":"","hasSketch":false,"sketchDesc":"","inscription":"","isSlabbed":false,"grader":"CGC|CBCS|PGX|PSA|empty","label":"Universal|Signature Series|CGC x JSA|Qualified|Restored|Pedigree|Conserved|SS Qualified|SS Restored|Custom|NG|CVR|Standard|Verified Sig|Witnessed Sig|Gold Label|empty","grade":"","pageQuality":"White|Off-White/White|Off-White|Cream/Off-White|Cream|Light Tan|Tan|Brittle|empty","serial":"","restoregrade":"","confidence":85,"lowConfidenceFields":"","sigConfidence":"certain|uncertain|empty"}`});
+
+  try{
+    setPill('busy','Analyzing...');
+    document.getElementById('spinMsg').textContent='Claude is reading your comic...';
+    document.getElementById('spinSub').textContent='Identifying title, grade, signatures...';
+    const r=await fetch(WORKER,{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-opus-4-5',max_tokens:1500,messages:[{role:'user',content:parts}]})});
+    const data=await r.json();
+    if(data.error)throw new Error(data.error.message);
+    const result=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+
+    // Cross-reference online for missing data
+    if(result.title&&result.issue){
+      document.getElementById('spinMsg').textContent='Verifying and filling gaps...';
+      document.getElementById('spinSub').textContent='Cross-checking print runs, creator credits, edition details...';
+      try{
+        const vp=`For "${result.title}" #${result.issue}${result.varletter?' Cover '+result.varletter:''}${result.grader?' ('+result.grader+' '+result.grade+')':''}, verify and fill these empty fields using your knowledge: printrun=${result.printrun||'?'}, edtype=${result.edtype||'?'}, event=${result.event||'?'}, artists=${JSON.stringify(result.artists)}, writers=${JSON.stringify(result.writers)}, pageQuality=${result.pageQuality||'?'}, serial=${result.serial||'?'}. Return ONLY valid JSON: {"printrun":"","edtype":"","event":"","artists":[],"writers":[],"pageQuality":"","serial":"","additionalNotes":""}`;
+        const vr=await callClaude(vp);
+        const verified=JSON.parse(vr);
+        if(!result.printrun&&verified.printrun)result.printrun=verified.printrun;
+        if(!result.edtype&&verified.edtype)result.edtype=verified.edtype;
+        if(!result.event&&verified.event)result.event=verified.event;
+        if((!result.artists||!result.artists.length)&&verified.artists&&verified.artists.length)result.artists=verified.artists;
+        if((!result.writers||!result.writers.length)&&verified.writers&&verified.writers.length)result.writers=verified.writers;
+        if(!result.pageQuality&&verified.pageQuality)result.pageQuality=verified.pageQuality;
+        if(!result.serial&&verified.serial)result.serial=verified.serial;
+        if(verified.additionalNotes)result._notes=verified.additionalNotes;
+      }catch(e){console.log('Verify step:',e);}
+    }
+
+    fillForm(result);setPill('ok','Synced');
+  }catch(err){
+    console.error(err);setPill('err','AI error');
+    const ab=document.getElementById('aiBox');
+    ab.className='ai-box ai-err';ab.textContent='AI scan failed: '+err.message+'. Fill in details manually below.';ab.style.display='block';
+    document.getElementById('scanForm').classList.add('on');
+  }
+  document.getElementById('scanSpin').classList.remove('on');
+}
+
+function fillForm(d){
+  const s=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!==false&&v!=='')el.value=String(v);};
+  s('f_title',d.title);s('f_issue',d.issue);s('f_publisher',d.publisher);s('f_date',d.date);
+  s('f_volume',d.volume);s('f_coverprice',d.coverprice);s('f_varletter',d.varletter);s('f_variant',d.variant);
+  if(d.covertype&&d.covertype!=='Standard'){const el=document.getElementById('f_covertype');if(el)el.value=d.covertype;}
+  if(d.wraparound){const el=document.getElementById('f_wrap');if(el)el.checked=true;}
+  if(d.backHasInfo){const el=document.getElementById('f_backinfo');if(el)el.checked=true;}
+  clearMulti();
+  if(d.artists&&d.artists.length)d.artists.forEach(a=>a&&addTagVal('artist',a));
+  if(d.writers&&d.writers.length)d.writers.forEach(w=>w&&addTagVal('writer',w));
+  if(d.chars&&d.chars.length)d.chars.forEach(c=>c&&addTagVal('char',c));
+  s('f_key',d.key);s('f_arc',d.arc);
+  if(d.limited||d.printrun||d.setpos||d.edtype){
+    s('f_printrun',d.printrun);s('f_copynum',d.copynum);s('f_setpos',d.setpos);s('f_settotal',d.settotal);
+    s('f_event',d.event);s('f_editnotes',d.editionnotes);
+    if(d.edtype){const el=document.getElementById('f_edtype');if(el&&el.querySelector(`option[value="${d.edtype}"]`))el.value=d.edtype;}
+  }
+  if(d._notes){const el=document.getElementById('f_notes');if(el&&!el.value)el.value=d._notes;}
+  if(d.isSlabbed){
+    setType('slabbed');
+    if(d.grader){const el=document.getElementById('f_grader');if(el){el.value=d.grader;onGrader();}}
+    setTimeout(()=>{
+      document.querySelectorAll('.lbl-opt').forEach(opt=>{
+        if(opt.getAttribute('data-id')===d.label){
+          document.querySelectorAll('.lbl-opt').forEach(x=>x.classList.remove('sel'));
+          opt.classList.add('sel');updateLblPill(opt.getAttribute('data-c'),d.label);checkSigLabel(d.label,d.grader||'CGC');
+        }
+      });
+    },200);
+    s('f_grade',d.grade);s('f_pages',d.pageQuality);s('f_serial',d.serial);
+    if(d.restoregrade)s('f_restore',d.restoregrade);
+  }
+  const isSigLabel=d.label&&(d.label.includes('Signature')||d.label.includes('JSA')||d.label.includes('Verified')||d.label.includes('Witnessed')||d.label.includes('Gold Label')||d.label.includes('SS '));
+  if(d.signed||isSigLabel){
+    if(!d.isSlabbed)setType('signed');
+    document.getElementById('sigSec').style.display='block';
+    if(d.sigtype){const el=document.getElementById('f_sigtype');if(el){el.value=d.sigtype;onSigType();}}
+    s('f_signedby',d.signedby);s('f_inscription',d.inscription);
+    if(d.hasSketch){const el=document.getElementById('f_hasSketch');if(el){el.checked=true;onSketchToggle();s('f_sketchDesc',d.sketchDesc);}}
+  }
+  const conf=d.confidence||75;
+  const cw=document.getElementById('confWrap');if(cw)cw.style.display='flex';
+  document.getElementById('confFill').style.width=conf+'%';
+  document.getElementById('confFill').style.background=conf>=80?'var(--teal)':conf>=60?'var(--gold)':'var(--red)';
+  document.getElementById('confLbl').textContent='AI confidence: '+conf+'%';
+  const ab=document.getElementById('aiBox');
+  if(d.lowConfidenceFields&&d.lowConfidenceFields.length>2){ab.className='ai-box ai-warn';ab.textContent='Please verify: '+d.lowConfidenceFields;ab.style.display='block';}
+  else{ab.className='ai-box ai-ok';ab.textContent='Scan complete - '+conf+'% confidence. Review and save.';ab.style.display='block';}
+  document.getElementById('scanForm').classList.add('on');
+  document.getElementById('content').scrollTo(0,0);
+}
+
+function updateLblPill(c,id){const p=document.getElementById('lblPill');if(p){p.textContent=id;p.style.background=c;}}
+
+function onGrader(){
+  const g=gv('f_grader')||'CGC';const labels=LABELS[g]||LABELS.CGC;
+  const grid=document.getElementById('lblGrid');
+  grid.innerHTML=labels.map((l,i)=>`<div class="lbl-opt${i===0?' sel':''}" data-id="${l.id}" data-c="${l.c}" onclick="selLabel(this,'${l.c}','${l.id}','${g}')"><div class="lbl-dot" style="background:${l.c}"></div><div><div style="font-weight:500">${l.n}</div>${l.h?`<div style="font-size:10px;color:var(--muted)">${l.h}</div>`:''}</div></div>`).join('');
+  const first=labels[0];updateLblPill(first.c,first.id);checkSigLabel(first.id,g);
+  document.getElementById('cgcRestore').style.display='none';
+}
+function selLabel(el,color,id,grader){
+  document.querySelectorAll('.lbl-opt').forEach(d=>d.classList.remove('sel'));if(el)el.classList.add('sel');
+  updateLblPill(color,id);checkSigLabel(id,grader);
+  document.getElementById('cgcRestore').style.display=(grader==='CGC'&&(id==='Restored'||id==='SS Restored'))?'block':'none';
+}
+function checkSigLabel(id,grader){
+  const isSS=id==='Signature Series'||id==='CGC x JSA'||id==='Verified Sig'||id==='Witnessed Sig'||id==='Gold Label'||id==='SS Qualified'||id==='SS Restored';
+  const sigSec=document.getElementById('sigSec');
+  if(isSS&&curType==='slabbed'){
+    if(sigSec)sigSec.style.display='block';
+    const auth=document.getElementById('f_auth');
+    if(auth){if(id==='Signature Series')auth.value='CGC SS';else if(id==='CGC x JSA')auth.value='CGC x JSA';else if(id==='Verified Sig')auth.value='CBCS Verified';else if(id==='Witnessed Sig')auth.value='CBCS Witnessed';}
+    const st=document.getElementById('f_sigtype');if(st)st.value='witnessed';
+  }else if(curType==='slabbed'&&!document.getElementById('manSig')?.checked){
+    if(sigSec)sigSec.style.display='none';
+  }
+}
+function getSelLabel(){const s=document.querySelector('.lbl-opt.sel');return s?s.getAttribute('data-id'):'';}
+
+function setType(t){
+  curType=t;
+  document.getElementById('tbR').className='tb'+(t==='raw'?' raw':'');
+  document.getElementById('tbS').className='tb'+(t==='signed'?' signed':'');
+  document.getElementById('tbG').className='tb'+(t==='slabbed'?' slabbed':'');
+  const hints={raw:'Same title & issue raw copies auto-merge.',signed:'Each signed copy is always its own row.',slabbed:'Each slab is always its own row - tracked by serial number.'};
+  document.getElementById('typeHint').textContent=hints[t]||'';
+  document.getElementById('rawSec').style.display=t==='raw'?'block':'none';
+  document.getElementById('signSec').style.display=t==='signed'?'block':'none';
+  document.getElementById('slabSec').style.display=t==='slabbed'?'block':'none';
+  document.getElementById('stRaw').style.display=t==='raw'?'block':'none';
+  document.getElementById('stSign').style.display=t==='signed'?'block':'none';
+  document.getElementById('stSlab').style.display=t==='slabbed'?'block':'none';
+  document.getElementById('slotLabel').style.display=t==='slabbed'?'block':'none';
+  const sigSec=document.getElementById('sigSec');
+  if(sigSec)sigSec.style.display=(t==='signed'||document.getElementById('manSig')?.checked)?'block':'none';
+  const msw=document.getElementById('manSigWrap');if(msw)msw.style.display=t==='signed'?'none':'block';
+  if(t==='slabbed')onGrader();
+}
+function onManSig(){const c=document.getElementById('manSig')?.checked;const s=document.getElementById('sigSec');if(s)s.style.display=(c||curType==='signed')?'block':'none';}
+function onSigType(){const t=gv('f_sigtype');const nw=document.getElementById('sigNameWrap');const aw=document.getElementById('sigAuthWrap');if(nw)nw.style.display=t==='facsimile'?'none':'block';if(aw)aw.style.display=(t==='unwitnessed'||t==='edition-wide'||t==='facsimile')?'none':'block';}
+function onSketchToggle(){const c=document.getElementById('f_hasSketch')?.checked;const w=document.getElementById('sketchWrap');if(w)w.style.display=c?'block':'none';}
+
+function genFlags(comic){
+  const flags=[];
+  if(comic.type==='slabbed'){
+    if(!comic.serial)flags.push({q:'Serial/cert number not recorded - check the slab label'});
+    if(!comic.grade)flags.push({q:'Numeric grade not recorded - check the slab label'});
+    if(!comic.pages)flags.push({q:'Page quality not recorded - check the CGC/CBCS label'});
+    const isSigLabel=comic.label&&(comic.label.includes('Signature')||comic.label.includes('JSA')||comic.label.includes('Verified')||comic.label.includes('Witnessed'));
+    if(isSigLabel&&!comic.signedby)flags.push({q:'Signature label detected but signer name missing - check label or CGC registry'});
+  }
+  if(comic.limited){
+    if(!comic.printrun)flags.push({q:'Limited edition but print run unknown - research how many copies were made'});
+    if(!comic.edtype||comic.edtype==='Unknown / N/A')flags.push({q:'Edition type unknown - was this a convention, livestream, store, or retailer exclusive?'});
+    if(comic.setpos&&!comic.companions)flags.push({q:'Part of a set ('+comic.setpos+') - what is on the companion cover(s)?'});
+  }
+  if(comic.covertype==='Blank Sketch'&&!comic.sketchDesc)flags.push({q:'Blank sketch cover - describe the original artwork added by the artist'});
+  if(comic.covertype==='Original Art')flags.push({q:'Verify this is a 1-of-1 original artwork - document the artist and subject'});
+  return flags;
+}
+
+function setF(f,el){curFilter=f;document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderGallery();}
+
+function renderGallery(){
+  const q=(document.getElementById('srch')?.value||'').toLowerCase();
+  let data=[...coll];
+  if(curFilter==='raw')data=data.filter(c=>c.type==='raw'&&!c.signed);
+  else if(curFilter==='signed')data=data.filter(c=>c.signed||c.type==='signed');
+  else if(curFilter==='slabbed')data=data.filter(c=>c.type==='slabbed');
+  else if(curFilter==='keys')data=data.filter(c=>c.key&&c.key.length>2);
+  else if(curFilter==='ltd')data=data.filter(c=>c.limited);
+  else if(curFilter==='cgc')data=data.filter(c=>c.gradeco==='CGC');
+  else if(curFilter==='cbcs')data=data.filter(c=>c.gradeco==='CBCS');
+  else if(curFilter==='research')data=data.filter(c=>c.researchFlags&&c.researchFlags.length>0);
+  if(q)data=data.filter(c=>[c.title,c.issue,c.publisher,c.key,c.artists,c.writers,c.chars,c.variant,c.varletter,c.signedby,c.gradeco,c.event,c.rawbox,c.signbox,c.slabbox].join(' ').toLowerCase().includes(q));
+  const grid=document.getElementById('galGrid');const empty=document.getElementById('galEmpty');
+  if(!data.length){grid.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  const pip={raw:'pip-r',signed:'pip-s',slabbed:'pip-g'};
+  grid.innerHTML=data.map(c=>{
+    const et=c.signed?'signed':c.type;
+    const ltd=c.limited?(c.printrun?'LE '+c.printrun:'Ltd'):'';
+    const box=c.rawbox||c.signbox||c.slabbox;
+    const hasR=c.researchFlags&&c.researchFlags.length>0;
+    return `<div class="cc${hasR?' nr':''}" onclick="showDetail('${c.id}')">
+      <div class="ct">
+        ${c.img?`<img src="${c.img}" loading="lazy" alt="">`:'<div class="ti">📚</div>'}
+        ${c.type==='raw'&&!c.signed&&c.qty>1?`<div class="qb">x${c.qty}</div>`:''}
+        ${c.limited&&ltd?`<div class="lb">${ltd}</div>`:''}
+        ${box?`<div class="bb">${esc(box)}</div>`:''}
+        ${hasR?'<div class="rb">?</div>':`<div class="pip ${pip[et]||'pip-r'}"></div>`}
+      </div>
+      <div class="ci">
+        ${c.key?'<span class="kd"></span>':''}
+        <div class="ct-title">${esc(c.title)}</div>
+        <div class="ct-sub">#${esc(c.issue)}${c.varletter?' Cvr '+esc(c.varletter):''}${c.artists?' - '+esc(c.artists.split(',')[0]):''}</div>
+        <div class="ct-sub" style="color:${et==='slabbed'?'var(--blue)':et==='signed'?'var(--purple)':'var(--hint)'}">
+          ${et==='slabbed'?(esc(c.gradeco||'')+' '+esc(c.grade||'')):et==='signed'?'Signed by '+esc(c.signedby||'?'):'Raw'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats(){
+  const total=coll.reduce((s,c)=>s+(c.qty||1),0);
+  const unique=new Set(coll.map(c=>c.title+'#'+c.issue)).size;
+  const invested=coll.reduce((s,c)=>s+(c.purchase||0),0);
+  const val=coll.reduce((s,c)=>s+(c.marketval||0),0);
+  document.getElementById('stTotal').textContent=total;
+  document.getElementById('stUnique').textContent=unique;
+  document.getElementById('stInvest').textContent='$'+Math.round(invested).toLocaleString();
+  document.getElementById('stVal').textContent='$'+Math.round(val).toLocaleString();
+  const nr=coll.filter(c=>c.researchFlags&&c.researchFlags.length>0);
+  const chip=document.getElementById('researchChip');const dot=document.getElementById('navRDot');
+  if(chip)chip.style.display=nr.length>0?'block':'none';
+  if(dot)dot.style.display=nr.length>0?'block':'none';
+}
+
+function renderResearchPanel(){
+  const isD=window.innerWidth>=768;const panel=document.getElementById('researchPanel');if(!panel)return;
+  const items=coll.filter(c=>c.researchFlags&&c.researchFlags.length>0);
+  document.getElementById('researchCount').textContent=items.length;
+  if(!isD||!items.length){panel.style.display='none';return;}
+  panel.style.display='block';
+  document.getElementById('researchList').innerHTML=items.map(c=>`
+    <div class="ri">
+      <div class="ri-title">${esc(c.title)} #${esc(c.issue)}${c.varletter?' Cvr '+esc(c.varletter):''}${c.type==='slabbed'?' - '+esc(c.gradeco||'')+' '+esc(c.grade||''):''}</div>
+      ${c.researchFlags.map(f=>`<div class="ri-q">? ${esc(f.q)}</div>`).join('')}
+      <textarea class="ri-notes" placeholder="Research notes..." onchange="saveRNote('${c.id}',this.value)">${esc(c.researchNotes||'')}</textarea>
+      <button class="ri-save" onclick="markR('${c.id}')">Mark as Researched</button>
+    </div>`).join('');
+}
+function saveRNote(id,note){const c=coll.find(x=>x.id==id);if(c){c.researchNotes=note;saveColl();}}
+function markR(id){const c=coll.find(x=>x.id==id);if(!c)return;c.researchFlags=[];saveColl();renderResearchPanel();updateStats();renderGallery();toast('Marked as researched');}
+
+function showDetail(id){
+  const c=coll.find(x=>x.id==id);if(!c)return;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sDetail').classList.add('on');
+  const isSlab=c.type==='slabbed',isSigned=c.signed||c.type==='signed';
+  const box=c.rawbox||c.signbox||c.slabbox;
+  const ltd=c.limited?(c.printrun?'Limited to '+c.printrun:'Limited Edition'):'';
+  const bClass=isSlab?'b-slab':isSigned?'b-sig':'b-raw';
+  const typeLabel=isSlab?'Slabbed':c.type==='signed'?'Signed':'Raw';
+  const hasR=c.researchFlags&&c.researchFlags.length>0;
+  document.getElementById('detailBody').innerHTML=`
+    <div class="dh">
+      ${c.img?`<img src="${c.img}" class="dt" alt="">`:'<div class="dtp">📚</div>'}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:18px;font-weight:700;line-height:1.2;margin-bottom:4px">${esc(c.title)}</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:8px">#${esc(c.issue)}${c.volume?' - '+esc(c.volume):''}${c.varletter?' - Cover '+esc(c.varletter):''}</div>
+        <div>
+          <span class="badge ${bClass}">${typeLabel}</span>
+          ${c.key?'<span class="badge b-key">Key Issue</span>':''}
+          ${c.limited?`<span class="badge b-ltd">${ltd}</span>`:''}
+          ${box?`<span class="badge b-box">${esc(box)}</span>`:''}
+          ${hasR?'<span class="badge b-nr">Needs Research</span>':''}
+          ${c.covertype&&c.covertype!=='Standard'?`<span class="badge" style="background:var(--bg3);color:var(--muted)">${esc(c.covertype)}</span>`:''}
+        </div>
+        ${c.artists?`<div style="font-size:12px;color:var(--muted);margin-top:6px">Art: ${esc(c.artists)}</div>`:''}
+        ${c.variant?`<div style="font-size:12px;color:var(--muted)">Variant: ${esc(c.variant)}</div>`:''}
+      </div>
+    </div>
+    ${(c.img2||c.img3)?`<div style="display:flex;gap:8px;margin-bottom:12px">${c.img2?`<img src="${c.img2}" style="height:80px;border-radius:6px;object-fit:cover" alt="Back">`:''}${c.img3?`<img src="${c.img3}" style="height:80px;border-radius:6px;object-fit:cover" alt="Label">`:''}</div>`:''}
+    ${hasR?`<div class="rd on"><h3>Needs Research</h3>${c.researchFlags.map(f=>`<div class="rq"><div class="rq-q">? ${esc(f.q)}</div></div>`).join('')}</div>`:''}
+    <div class="dtbl">
+      <div class="dth">Comic details</div>
+      ${dr('Publisher',c.publisher)}${dr('Cover Date',c.date)}${dr('Cover Price',c.coverprice)}
+      ${dr('Variant letter',c.varletter)}${dr('Cover variant',c.variant)}${dr('Cover type',c.covertype)}
+      ${dr('Cover Artist(s)',c.artists)}${dr('Writer(s)',c.writers)}
+      ${dr('Characters',c.chars)}${dr('Story Arc',c.arc)}
+      ${c.key?dr('Key Significance',c.key,'var(--red-d)'):''}
+    </div>
+    ${box?`<div class="dtbl"><div class="dth">Storage</div>${dr('Box #',box)}</div>`:''}
+    ${c.limited?`<div class="dtbl"><div class="dth">Limited edition</div>
+      ${dr('Print run',c.printrun?'Limited to '+c.printrun:'')}${dr('Your copy #',c.copynum)}
+      ${dr('Numbering',c.numtype)}${dr('Set position',c.setpos)}${dr('Total covers in set',c.settotal)}
+      ${dr('Companion cover(s)',c.companions)}${dr('Edition type',c.edtype)}${dr('Event / Source',c.event)}
+      ${dr('Edition notes',c.editionnotes)}${dr('Info confirmed via',c.infoSrc)}
+    </div>`:''}
+    ${isSlab?`<div class="dtbl"><div class="dth">Slab info</div>
+      ${dr('Grading company',c.gradeco)}${dr('Label',c.label)}
+      ${dr('Grade',`<strong style="font-size:16px">${esc(c.grade)}</strong>`)}
+      ${dr('Page quality',c.pages)}${dr('Serial / Cert #',c.serial)}
+      ${c.restoregrade?dr('Restoration grade',c.restoregrade):''}
+    </div>`:''}
+    ${isSigned?`<div class="dtbl"><div class="dth">Signature</div>
+      ${dr('Signature type',c.sigtype)}${dr('Signed by',c.signedby)}
+      ${dr('Authentication',c.auth)}${dr('Inscription',c.inscription)}
+      ${c.hasSketch?dr('Artist sketch','Yes - '+esc(c.sketchDesc||'see notes')):''}
+    </div>`:''}
+    ${!isSlab?`<div class="dtbl"><div class="dth">${c.type==='signed'?'Signed copy':'Raw copy'} info</div>
+      ${dr('Quantity','x'+c.qty)}${dr('Condition',c.condition)}
+    </div>`:''}
+    <div class="dtbl"><div class="dth">Purchase & value</div>
+      ${dr('Purchase',c.purchase?'$'+c.purchase.toFixed(2):'--')}${dr('Date',c.purchasedate||'--')}
+      ${dr('Source',c.source||'--')}${dr('Declared Value',c.declaredval?'$'+parseFloat(c.declaredval).toFixed(2):'--')}
+      ${dr('Market Value',c.marketval?'$'+c.marketval.toFixed(2):'--')}
+      ${dr('Sale Price',c.sale?`<span style="color:var(--teal);font-weight:600">$${c.sale.toFixed(2)}</span>`:'--')}${dr('Sale Date',c.saledate||'--')}
+    </div>
+    ${c.notes?`<div class="dtbl"><div class="dth">Notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.notes)}</div></div>`:''}
+    ${c.researchNotes?`<div class="dtbl"><div class="dth">Research notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.researchNotes)}</div></div>`:''}
+    <div class="btn-row">
+      <button class="btn-sm" onclick="editComic('${c.id}')">Edit</button>
+      <button class="btn-sm" onclick="ebay('${esc(c.title)}','${esc(c.issue)}','${esc(c.gradeco||'')}','${esc(c.grade||'')}')">eBay Sold</button>
+      <button class="btn-sm" onclick="delComic('${c.id}')" style="background:var(--red-l);color:var(--red-d);border-color:var(--red)">Delete</button>
+    </div><div style="height:20px"></div>`;
+}
+function dr(label,val,color=''){if(!val&&val!==0)return'';return`<div class="dr"><span class="dl">${label}</span><span class="dv"${color?` style="color:${color}"`:''}}>${val}</span></div>`;}
+
+function editComic(id){
+  const c=coll.find(x=>x.id==id);if(!c)return;
+  editId=id;clearScan();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sScan').classList.add('on');
+  document.getElementById('nbScan').classList.add('on');document.getElementById('nbGal').classList.remove('on');
+  setType(c.type);
+  if(c.img){imgs[1]=c.img;setPrev(1,c.img);}
+  if(c.img2){imgs[2]=c.img2;setPrev(2,c.img2);}
+  if(c.img3){imgs[3]=c.img3;setPrev(3,c.img3);}
+  const s=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!==undefined)el.value=String(v);};
+  s('f_title',c.title);s('f_issue',c.issue);s('f_volume',c.volume);s('f_publisher',c.publisher);
+  s('f_date',c.date);s('f_coverprice',c.coverprice);s('f_varletter',c.varletter);s('f_variant',c.variant);
+  if(c.covertype){const el=document.getElementById('f_covertype');if(el)el.value=c.covertype||'';}
+  if(c.artists)c.artists.split(',').map(a=>a.trim()).filter(Boolean).forEach(a=>addTagVal('artist',a));
+  if(c.writers)c.writers.split(',').map(w=>w.trim()).filter(Boolean).forEach(w=>addTagVal('writer',w));
+  if(c.chars)c.chars.split(',').map(ch=>ch.trim()).filter(Boolean).forEach(ch=>addTagVal('char',ch));
+  s('f_key',c.key);s('f_arc',c.arc);
+  s('f_rawbox',c.rawbox);s('f_signbox',c.signbox);s('f_slabbox',c.slabbox);
+  if(c.wraparound){const el=document.getElementById('f_wrap');if(el)el.checked=true;}
+  if(c.backinfo){const el=document.getElementById('f_backinfo');if(el)el.checked=true;}
+  s('f_printrun',c.printrun);s('f_copynum',c.copynum);s('f_setpos',c.setpos);s('f_settotal',c.settotal);
+  s('f_companions',c.companions);s('f_event',c.event);s('f_editnotes',c.editionnotes);
+  if(c.edtype){const el=document.getElementById('f_edtype');if(el)el.value=c.edtype||'';}
+  if(c.infoSrc){const el=document.getElementById('f_infoSrc');if(el)el.value=c.infoSrc||'cover';}
+  if(c.signed||c.type==='signed'){
+    document.getElementById('sigSec').style.display='block';
+    if(c.sigtype){const el=document.getElementById('f_sigtype');if(el){el.value=c.sigtype;onSigType();}}
+    s('f_signedby',c.signedby);s('f_inscription',c.inscription);
+    if(c.hasSketch){const el=document.getElementById('f_hasSketch');if(el){el.checked=true;onSketchToggle();s('f_sketchDesc',c.sketchDesc);}}
+    if(c.type!=='signed'){const t=document.getElementById('manSig');if(t){t.checked=true;onManSig();}}
+  }
+  s('f_qty',c.qty||1);s('f_cond',c.condition||'NM 9.4');s('f_scond',c.condition||'NM 9.4');
+  if(c.type==='slabbed'){
+    s('f_grader',c.gradeco||'CGC');onGrader();
+    setTimeout(()=>{document.querySelectorAll('.lbl-opt').forEach(opt=>{if(opt.getAttribute('data-id')===c.label){document.querySelectorAll('.lbl-opt').forEach(x=>x.classList.remove('sel'));opt.classList.add('sel');updateLblPill(opt.getAttribute('data-c'),c.label);}});},200);
+    s('f_grade',c.grade);s('f_pages',c.pages);s('f_serial',c.serial);if(c.restoregrade)s('f_restore',c.restoregrade);
+  }
+  s('f_buy',c.purchase);s('f_buydate',c.purchasedate);s('f_src',c.source);
+  s('f_dval',c.declaredval);s('f_mkt',c.marketval);s('f_sold',c.sale);s('f_solddate',c.saledate);s('f_notes',c.notes);
+  document.getElementById('scanForm').classList.add('on');
+  document.getElementById('confWrap').style.display='none';
+  document.getElementById('aiBox').style.display='none';
+  document.getElementById('content').scrollTo(0,0);
+}
+function setPrev(n,src){const icon=document.getElementById('prev'+n).querySelector('.sicon');const img=document.getElementById('img'+n);if(icon)icon.style.display='none';if(img){img.src=src;img.style.display='block';}}
+function delComic(id){if(!confirm('Delete this comic?'))return;coll=coll.filter(c=>c.id!=id);saveColl();toast('Deleted');goGallery();}
+function ebay(title,issue,grader,grade){const q=encodeURIComponent([title,issue,grader,grade,'comic'].filter(Boolean).join(' '));window.open('https://www.ebay.com/sch/i.html?_nkw='+q+'&_sacat=259104&LH_Sold=1&LH_Complete=1','_blank');}
+
+function findRawDup(title,issue){return coll.find(c=>c.type==='raw'&&!c.signed&&c.title.toLowerCase()===title.toLowerCase()&&String(c.issue)===String(issue));}
+
+function saveComic(){
+  if(editId){doSave();return;}
+  if(curType==='raw'&&!document.getElementById('manSig')?.checked){
+    const t=gv('f_title'),i=gv('f_issue');if(!t){toast('Please enter a title');return;}
+    const dup=findRawDup(t,i);
+    if(dup){
+      pendingDupId=dup.id;
+      const addQty=parseInt(gv('f_qty'))||1;
+      document.getElementById('dupMsg').textContent='You already have x'+(dup.qty||1)+' raw copies of "'+t+'" #'+i+'. Add '+addQty+' more?';
+      document.getElementById('dupBox').classList.add('on');
+      document.getElementById('scanForm').style.opacity='0.35';
+      document.getElementById('content').scrollTo(0,0);return;
+    }
+  }
+  doSave();
+}
+async function doMerge(){const dup=coll.find(c=>c.id===pendingDupId);if(!dup){doCancel();return;}dup.qty=(dup.qty||1)+(parseInt(gv('f_qty'))||1);if(imgs[1]&&!dup.img)dup.img=imgs[1];saveColl();toast(dup.title+' #'+dup.issue+' now x'+dup.qty);doCancel();clearScan();goGallery();}
+function doKeep(){doCancel();doSave();}
+function doCancel(){pendingDupId=null;document.getElementById('dupBox').classList.remove('on');document.getElementById('scanForm').style.opacity='1';}
+
+function doSave(){
+  const isSlab=curType==='slabbed';
+  const manSigned=document.getElementById('manSig')?.checked||false;
+  const isSigned=curType==='signed'||manSigned;
+  const selLabel=getSelLabel();
+  const isSS=selLabel&&(selLabel.includes('Signature')||selLabel.includes('JSA')||selLabel.includes('Verified')||selLabel.includes('Witnessed')||selLabel.includes('Gold Label')||selLabel.includes('SS '));
+  const hasLtd=!!(gv('f_printrun')||gv('f_copynum')||gv('f_setpos'));
+  const id=editId||Date.now().toString();
+  const cond=curType==='signed'?gv('f_scond'):gv('f_cond');
+  const sigtype=gv('f_sigtype');
+  const hasSketch=document.getElementById('f_hasSketch')?.checked||false;
+  const comic={
+    id,img:imgs[1],img2:imgs[2],img3:imgs[3],
+    title:gv('f_title')||'Unknown',issue:gv('f_issue'),volume:gv('f_volume'),
+    publisher:gv('f_publisher'),date:gv('f_date'),coverprice:gv('f_coverprice'),
+    varletter:gv('f_varletter'),variant:gv('f_variant'),covertype:gv('f_covertype')||'Standard',
+    artists:artists.join(', '),writers:writers.join(', '),key:gv('f_key'),chars:chars.join(', '),arc:gv('f_arc'),
+    wraparound:document.getElementById('f_wrap')?.checked||false,backinfo:document.getElementById('f_backinfo')?.checked||false,
+    type:curType,signed:isSigned||isSS,sigtype,signedby:sigtype!=='facsimile'?gv('f_signedby'):'',
+    auth:sigtype==='witnessed'?gv('f_auth'):'',inscription:gv('f_inscription'),hasSketch,sketchDesc:hasSketch?gv('f_sketchDesc'):'',
+    qty:isSlab||isSigned?1:(parseInt(gv('f_qty'))||1),condition:cond,
+    rawbox:gv('f_rawbox'),signbox:gv('f_signbox'),slabbox:gv('f_slabbox'),
+    gradeco:isSlab?gv('f_grader'):'',label:isSlab?selLabel:'',
+    pages:isSlab?gv('f_pages'):'',serial:isSlab?gv('f_serial'):'',restoregrade:isSlab?gv('f_restore'):'',
+    limited:hasLtd,printrun:gv('f_printrun'),copynum:gv('f_copynum'),numtype:gv('f_numtype'),
+    setpos:gv('f_setpos'),settotal:gv('f_settotal'),companions:gv('f_companions'),
+    edtype:gv('f_edtype'),event:gv('f_event'),editionnotes:gv('f_editnotes'),infoSrc:gv('f_infoSrc'),
+    purchase:parseFloat(gv('f_buy'))||null,purchasedate:gv('f_buydate'),source:gv('f_src'),
+    declaredval:gv('f_dval'),marketval:parseFloat(gv('f_mkt'))||null,
+    sale:parseFloat(gv('f_sold'))||null,saledate:gv('f_solddate'),notes:gv('f_notes'),
+    added:new Date().toISOString().split('T')[0],researchFlags:[],researchNotes:''
+  };
+  comic.researchFlags=genFlags(comic);
+  if(editId){coll=coll.map(c=>c.id==editId?comic:c);editId=null;toast('Updated!');}
+  else{
+    coll.unshift(comic);
+    const msg=comic.title+' #'+comic.issue+' saved!'+(comic.researchFlags.length>0?' ('+comic.researchFlags.length+' flagged for research on laptop)':'');
+    toast(msg);
+    syncToSheet(comic);
+  }
+  saveColl();clearScan();goGallery();
+}
+
+async function syncToSheet(comic){
+  try{
+    setPill('busy','Syncing...');
+    const row=[comic.id,comic.title,comic.issue,comic.volume,comic.publisher,comic.date,comic.coverprice,comic.varletter,comic.variant,comic.covertype,comic.artists,comic.writers,comic.key,comic.chars,comic.arc,comic.type==='slabbed'?'Slabbed':comic.type==='signed'?'Signed':'Raw',comic.signed?'Yes':'',comic.sigtype,comic.signedby,comic.auth,comic.inscription,comic.hasSketch?'Yes':'',comic.sketchDesc,comic.qty,comic.condition,comic.rawbox,comic.signbox,comic.slabbox,comic.gradeco,comic.label,comic.grade,comic.pages,comic.serial,comic.restoregrade,comic.limited?'Yes':'',comic.printrun,comic.copynum,comic.numtype,comic.setpos,comic.settotal,comic.companions,comic.edtype,comic.event,comic.editionnotes,comic.infoSrc,comic.purchase||'',comic.purchasedate,comic.source,comic.declaredval||'',comic.marketval||'',comic.sale||'',comic.saledate,comic.notes,comic.researchFlags&&comic.researchFlags.length?comic.researchFlags.map(f=>f.q).join(' | '):'',comic.added];
+    const r=await fetch(SHEET_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({row})});
+    const data=await r.json();
+    if(data.status==='ok')setPill('ok','Synced');else throw new Error(data.message);
+  }catch(e){console.error(e);setPill('err','Saved locally');}
+}
+
+async function syncFromSheet(){
+  try{
+    setPill('busy','Loading...');
+    const r=await fetch(SHEET_URL);const data=await r.json();
+    if(data.status==='ok'&&data.data&&data.data.length>1){
+      const headers=data.data[0];
+      const g=(row,col)=>{const i=headers.indexOf(col);return i>=0?(row[i]||''):'';}
+      const loaded=data.data.slice(1).map(row=>({
+        id:g(row,'ID')||Date.now().toString(),title:g(row,'Title'),issue:g(row,'Issue'),volume:g(row,'Volume'),
+        publisher:g(row,'Publisher'),date:g(row,'Cover Date'),coverprice:g(row,'Cover Price'),
+        varletter:g(row,'Variant Letter'),variant:g(row,'Variant'),covertype:g(row,'Cover Type'),
+        artists:g(row,'Artists'),writers:g(row,'Writers'),key:g(row,'Key Issue'),chars:g(row,'Characters'),arc:g(row,'Story Arc'),
+        type:g(row,'Type')==='Slabbed'?'slabbed':g(row,'Type')==='Signed'?'signed':'raw',
+        signed:g(row,'Signed')==='Yes',sigtype:g(row,'Sig Type'),signedby:g(row,'Signed By'),auth:g(row,'Authentication'),
+        inscription:g(row,'Inscription'),hasSketch:g(row,'Has Sketch')==='Yes',sketchDesc:g(row,'Sketch Description'),
+        qty:parseInt(g(row,'Qty'))||1,condition:g(row,'Condition'),
+        rawbox:g(row,'Raw Box'),signbox:g(row,'Signed Box'),slabbox:g(row,'Slab Box'),
+        gradeco:g(row,'Grader'),label:g(row,'Label'),grade:g(row,'Grade'),pages:g(row,'Page Quality'),
+        serial:g(row,'Serial #'),restoregrade:g(row,'Restore Grade'),
+        limited:g(row,'Limited')==='Yes',printrun:g(row,'Print Run'),copynum:g(row,'Copy #'),numtype:g(row,'Numbering'),
+        setpos:g(row,'Set Position'),settotal:g(row,'Set Total'),companions:g(row,'Companion Covers'),
+        edtype:g(row,'Edition Type'),event:g(row,'Event'),editionnotes:g(row,'Edition Notes'),infoSrc:g(row,'Info Source'),
+        purchase:parseFloat(g(row,'Purchase $'))||null,purchasedate:g(row,'Purchase Date'),
+        source:g(row,'Source'),declaredval:g(row,'Declared Value $'),marketval:parseFloat(g(row,'Market $'))||null,
+        sale:parseFloat(g(row,'Sale $'))||null,saledate:g(row,'Sale Date'),notes:g(row,'Notes'),
+        researchFlags:g(row,'Research Flags')?g(row,'Research Flags').split(' | ').map(q=>({q})):[],
+        added:g(row,'Added'),img:'',img2:'',img3:''
+      }));
+      if(loaded.length>0){coll=loaded;saveColl();toast('Loaded '+loaded.length+' comics');renderGallery();updateStats();}
+    }
+    setPill('ok','Synced');
+  }catch(e){console.error(e);setPill('ok','Using local data');}
+}
+
+function exportCSV(){
+  if(!coll.length){toast('No comics to export');return;}
+  const headers=['ID','Title','Issue','Volume','Publisher','Cover Date','Cover Price','Variant Letter','Variant','Cover Type','Artists','Writers','Key Issue','Characters','Story Arc','Type','Signed','Sig Type','Signed By','Authentication','Inscription','Has Sketch','Sketch Description','Qty','Condition','Raw Box','Signed Box','Slab Box','Grader','Label','Grade','Page Quality','Serial #','Restore Grade','Limited','Print Run','Copy #','Numbering','Set Position','Set Total','Companion Covers','Edition Type','Event','Edition Notes','Info Source','Purchase $','Purchase Date','Source','Declared Value $','Market $','Sale $','Sale Date','Notes','Research Flags','Added'];
+  const rows=coll.map(c=>[c.id,c.title,c.issue,c.volume,c.publisher,c.date,c.coverprice,c.varletter,c.variant,c.covertype,c.artists,c.writers,c.key,c.chars,c.arc,c.type==='slabbed'?'Slabbed':c.type==='signed'?'Signed':'Raw',c.signed?'Yes':'',c.sigtype,c.signedby,c.auth,c.inscription,c.hasSketch?'Yes':'',c.sketchDesc,c.qty||1,c.condition,c.rawbox,c.signbox,c.slabbox,c.gradeco,c.label,c.grade,c.pages,c.serial,c.restoregrade,c.limited?'Yes':'',c.printrun,c.copynum,c.numtype,c.setpos,c.settotal,c.companions,c.edtype,c.event,c.editionnotes,c.infoSrc,c.purchase||'',c.purchasedate,c.source,c.declaredval||'',c.marketval||'',c.sale||'',c.saledate,c.notes,c.researchFlags&&c.researchFlags.length?c.researchFlags.map(f=>f.q).join(' | '):'',c.added].map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(','));
+  const csv=[headers.join(','),...rows].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='ComicVault_Collection.csv';a.click();toast('CSV exported!');
+}
+
+function clearScan(){
+  imgs={1:null,2:null,3:null};editId=null;pendingDupId=null;clearMulti();
+  [1,2,3].forEach(n=>{
+    document.getElementById('fi'+n).value='';
+    const icon=document.getElementById('prev'+n).querySelector('.sicon');
+    const img=document.getElementById('img'+n);
+    if(icon)icon.style.display='block';if(img){img.style.display='none';img.src='';}
+  });
+  document.getElementById('scanForm').classList.remove('on');document.getElementById('scanForm').style.opacity='1';
+  document.getElementById('scanSpin').classList.remove('on');document.getElementById('dupBox').classList.remove('on');
+  document.getElementById('aiBox').style.display='none';document.getElementById('confWrap').style.display='none';
+  const ms=document.getElementById('manSig');if(ms){ms.checked=false;onManSig();}
+  const hs=document.getElementById('f_hasSketch');if(hs){hs.checked=false;onSketchToggle();}
+  ['f_wrap','f_backinfo'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ['f_title','f_issue','f_volume','f_publisher','f_date','f_coverprice','f_varletter','f_variant','f_key','f_arc','f_rawbox','f_signbox','f_slabbox','f_printrun','f_copynum','f_setpos','f_settotal','f_companions','f_event','f_editnotes','f_signedby','f_inscription','f_sketchDesc','f_grade','f_serial','f_buy','f_buydate','f_src','f_dval','f_mkt','f_sold','f_solddate','f_notes','f_art','f_wri','f_char'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f_qty').value=1;setType('raw');
+}
+
+function gv(id){return(document.getElementById(id)||{}).value||'';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let tt;function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),4000);}
+
+function init(){
+  try{coll=JSON.parse(ls('cv_coll')||'[]');}catch(e){coll=[];}
+  setType('raw');onGrader();
+  const key=getKey();
+  if(key){
+    document.getElementById('nav').style.display='flex';
+    document.getElementById('sSetup').classList.remove('on');
+    goGallery();setTimeout(syncFromSheet,1000);
+  }
+}
+init();
+</script>
+</body>
+</html>
