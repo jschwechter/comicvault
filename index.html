@@ -1121,7 +1121,7 @@ function dr(label,val,color=''){if(!val&&val!==0)return'';return`<div class="dr"
 
 function editComic(id){
   const c=coll.find(x=>x.id==id);if(!c)return;
-  editId=id;clearScan();
+  clearScan();editId=id;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   document.getElementById('sScan').classList.add('on');
   document.getElementById('nbScan').classList.add('on');document.getElementById('nbGal').classList.remove('on');
@@ -1213,7 +1213,7 @@ function doSave(){
     qty:isSlab||isSigned?1:(parseInt(gv('f_qty'))||1),condition:cond,
     rawbox:gv('f_rawbox'),signbox:gv('f_signbox'),slabbox:gv('f_slabbox'),
     gradeco:isSlab?gv('f_grader'):'',label:isSlab?selLabel:'',
-    pages:isSlab?gv('f_pages'):'',serial:isSlab?gv('f_serial'):'',restoregrade:isSlab?gv('f_restore'):'',
+    grade:isSlab?gv('f_grade'):'',pages:isSlab?gv('f_pages'):'',serial:isSlab?gv('f_serial'):'',restoregrade:isSlab?gv('f_restore'):'',
     limited:hasLtd,printrun:gv('f_printrun'),copynum:gv('f_copynum'),numtype:gv('f_numtype'),
     setpos:gv('f_setpos'),settotal:gv('f_settotal'),companions:gv('f_companions'),
     edtype:gv('f_edtype'),event:gv('f_event'),editionnotes:gv('f_editnotes'),infoSrc:gv('f_infoSrc'),
