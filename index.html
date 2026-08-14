@@ -1125,6 +1125,9 @@ function editComic(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   document.getElementById('sScan').classList.add('on');
   document.getElementById('nbScan').classList.add('on');document.getElementById('nbGal').classList.remove('on');
+  populateForm(c);
+}
+function populateForm(c){
   setType(c.type);
   if(c.img){imgs[1]=c.img;setPrev(1,c.img);}
   if(c.img2){imgs[2]=c.img2;setPrev(2,c.img2);}
@@ -1190,7 +1193,7 @@ async function doMerge(){const dup=coll.find(c=>c.id===pendingDupId);if(!dup){do
 function doKeep(){doCancel();doSave();}
 function doCancel(){pendingDupId=null;document.getElementById('dupBox').classList.remove('on');document.getElementById('scanForm').style.opacity='1';}
 
-function doSave(){
+function buildComicFromForm(){
   const isSlab=curType==='slabbed';
   const manSigned=document.getElementById('manSig')?.checked||false;
   const isSigned=curType==='signed'||manSigned;
@@ -1222,6 +1225,10 @@ function doSave(){
     sale:parseFloat(gv('f_sold'))||null,saledate:gv('f_solddate'),notes:gv('f_notes'),
     added:new Date().toISOString().split('T')[0],researchFlags:[],researchNotes:''
   };
+  return comic;
+}
+function doSave(){
+  const comic=buildComicFromForm();
   comic.researchFlags=genFlags(comic);
   if(editId){coll=coll.map(c=>c.id==editId?comic:c);editId=null;toast('Updated!');}
   else{
@@ -1230,7 +1237,7 @@ function doSave(){
     toast(msg);
     syncToSheet(comic);
   }
-  saveColl();clearScan();goGallery();
+  clearDraft();saveColl();clearScan();goGallery();
 }
 
 async function syncToSheet(comic){
@@ -1307,6 +1314,47 @@ function gv(id){return(document.getElementById(id)||{}).value||'';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 let tt;function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),4000);}
 
+/* ---- Autosave draft (survives interruptions, phone calls, reloads) ---- */
+const DRAFT_KEY='cv_draft';
+function draftHasContent(){
+  if(!document.getElementById('scanForm').classList.contains('on'))return false;
+  return !!(gv('f_title')||gv('f_issue')||imgs[1]||imgs[2]||imgs[3]||artists.length||writers.length||chars.length);
+}
+function snapshotDraft(){
+  if(!draftHasContent())return;
+  try{
+    const c=buildComicFromForm();
+    c.__editId=editId||null;c.__ts=Date.now();
+    try{localStorage.setItem(DRAFT_KEY,JSON.stringify(c));}
+    catch(e){c.img='';c.img2='';c.img3='';c.__imgDropped=true;try{localStorage.setItem(DRAFT_KEY,JSON.stringify(c));}catch(e2){}}
+  }catch(e){}
+}
+function clearDraft(){try{localStorage.removeItem(DRAFT_KEY);}catch(e){}}
+function maybeRestoreDraft(){
+  let d=null;try{d=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null');}catch(e){d=null;}
+  if(!d)return;
+  const meaningful=(d.title&&d.title!=='Unknown')||d.issue||d.img||d.serial||d.grade;
+  if(!meaningful){clearDraft();return;}
+  const when=d.__ts?new Date(d.__ts).toLocaleString():'earlier';
+  const ok=confirm('You have an unsaved entry from '+when+(d.__imgDropped?' (photos were too large to keep)':'')+'.\n\nRestore it and pick up where you left off? Press Cancel to discard it.');
+  if(!ok){clearDraft();return;}
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('sScan').classList.add('on');
+  const nb=document.getElementById('nbScan');if(nb)nb.classList.add('on');
+  clearScan();editId=d.__editId||null;
+  populateForm(d);
+  toast('Draft restored');
+}
+let _draftT;
+function initDraftWatchers(){
+  const sf=document.getElementById('scanForm');if(!sf)return;
+  const q=()=>{clearTimeout(_draftT);_draftT=setTimeout(snapshotDraft,800);};
+  sf.addEventListener('input',q);
+  sf.addEventListener('change',q);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)snapshotDraft();});
+  window.addEventListener('beforeunload',snapshotDraft);
+}
 function init(){
   try{coll=JSON.parse(ls('cv_coll')||'[]');}catch(e){coll=[];}
   setType('raw');onGrader();
@@ -1316,6 +1364,8 @@ function init(){
     document.getElementById('sSetup').classList.remove('on');
     goGallery();setTimeout(syncFromSheet,1000);
   }
+  initDraftWatchers();
+  setTimeout(maybeRestoreDraft,300);
 }
 init();
 </script>
