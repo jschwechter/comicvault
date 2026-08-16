@@ -402,11 +402,21 @@ input[type=file]{display:none}
         <span class="sec">Limited edition</span>
         <div class="ltd-box">
           <div class="ltd-hdr">&#127942; Fill in only what applies &mdash; leave the rest blank</div>
-          <div class="three mb">
-            <div><div class="lbl">Print Run</div><input type="number" id="f_printrun" placeholder="350"></div>
-            <div><div class="lbl">Copy # (yours)</div><input type="number" id="f_copynum" placeholder="47"></div>
-            <div><div class="lbl">Numbering</div><select id="f_numtype"><option value="">N/A</option><option>Hand-numbered</option><option>Stamped</option><option>Certified</option><option>COA</option><option>Edition-wide signed</option></select></div>
+          <div class="two mb">
+            <div>
+              <div class="lbl">Print Run (total made)</div>
+              <input type="number" id="f_printrun" placeholder="e.g. 250">
+            </div>
+            <div>
+              <div class="lbl">Numbering type</div>
+              <select id="f_numtype"><option value="">N/A</option><option>Hand-numbered</option><option>Stamped</option><option>Certified</option><option>COA</option><option>Edition-wide signed</option></select>
+            </div>
           </div>
+          <div class="mb">
+            <div class="lbl">Your copy's individual # <span style="font-weight:400;text-transform:none;color:var(--hint)">(rare &mdash; only if physically numbered on YOUR copy, e.g. hand-written "47/250")</span></div>
+            <input type="number" id="f_copynum" placeholder="Usually blank &mdash; most copies aren't individually numbered">
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin:10px 0 8px;padding-top:8px;border-top:0.5px dashed var(--border2);line-height:1.5"><strong>Below is different from print run</strong> &mdash; only fill in if this exact comic was sold as one of several DIFFERENT companion cover images released together as a matching set (e.g. "Cover 1 of 2" showing one character, "Cover 2 of 2" showing another). Most comics don't have this &mdash; leave blank.</div>
           <div class="two mb">
             <div><div class="lbl">Set position</div><input type="text" id="f_setpos" placeholder="1 of 2 &mdash; leave blank if N/A"></div>
             <div><div class="lbl">Total covers in set</div><input type="text" id="f_settotal" placeholder="leave blank if N/A"></div>
@@ -610,6 +620,20 @@ input[type=file]{display:none}
     </button>
   </div>
   <div class="toast" id="toast"></div>
+
+  <!-- QUICK EDIT - fast field tweaks from the detail view without opening the full form -->
+  <div id="qeOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:900" onclick="if(event.target===this)closeQuickEdit()">
+    <div style="position:absolute;bottom:0;left:0;right:0;background:var(--bg);border-radius:16px 16px 0 0;padding:18px;max-height:80vh;overflow-y:auto">
+      <div style="width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 14px"></div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:12px" id="qeTitle">Quick Edit</div>
+      <div id="qeFields"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn out" onclick="closeQuickEdit()" style="flex:1">Cancel</button>
+        <button class="btn red" onclick="saveQuickEdit()" style="flex:1">Save</button>
+      </div>
+      <div style="height:10px"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -946,18 +970,21 @@ ABSOLUTE RULE - NEVER GUESS OR FABRICATE: If you cannot clearly read or confiden
 CONSISTENCY RULE: The varletter field is the single source of truth for the variant letter. Never mention a different or conflicting variant letter anywhere else in your response (not in editionnotes, not in variant description, not implied anywhere) - if genuinely uncertain between two possible letters, put your best answer in varletter and explain the uncertainty in lowConfidenceFields, never contradict it elsewhere.
 
 RULES:
-- Variant letters are single letters (A,B,C...L etc) on cover or label
-- "1 of 2" = SET POSITION. "Limited to 350" = PRINT RUN. These are different fields - only fill if you actually see this info
+- Variant letters are single letters (A,B,C...L etc) on cover or label. ONLY fill varletter if you can point to an actual printed single letter designating the cover (e.g. "Cover E", "Variant B"). Many covers - especially named/themed variants like "Postcard Exclusive" or convention exclusives - have NO letter at all and are identified by name only, not a letter. Never invent or guess a letter when none is printed; leave varletter empty in that case and put the name-based description in variant instead.
+- "1 of 2" (a SET of different companion covers) = SET POSITION, not print run. "Limited to 350" = PRINT RUN, the total number made. These are different fields - only fill if you actually see this info.
+- copynum (the individual copy number on THIS specific physical book, e.g. hand-written "47/250") is RARE - only fill it if you can see an actual handwritten or stamped number physically on the cover/label identifying which specific copy this is. Do NOT fill copynum just because you know the total print run - most limited editions are not individually numbered on each copy, so copynum should stay empty far more often than printrun.
 - Signatures on surfboards/weapons/artwork = FACSIMILE not real
 - Blank sketch cover with hand-drawn art = Original Art 1-of-1
 - CGC Blue (Universal) label CAN have unwitnessed real signature
 - For CGC specifically, the label type itself tells you Witnessed vs Verified - no ambiguity: "Signature Series" (yellow label) = Witnessed (a rep watched it signed live). "CGC x JSA" (yellow+black label, mentions JSA) = Verified/forensic (authenticated afterward via handwriting comparison, no one watched). Set label and sigtype accordingly with confidence.
 - For CBCS, check the label's actual printed wording for "Witnessed" vs "Verified" since CBCS uses different label sub-types for this - report what you read in labelSigCheck.
 - Raw (ungraded) comics can absolutely be signed too - don't assume signatures only happen on slabbed books.
-- List ONLY artists/writers whose names you can actually read clearly - do not guess names. CGC/CBCS labels typically print credit lines verbatim like "[Name] story / [Name] art / [Name] cover" in small text below the title - if a label image is provided, read these credit lines character by character and use exactly what's printed there as the authoritative source, in preference to any other guess. The "cover" credit specifically is the cover artist for the artists field.
+- List ONLY artists/writers whose names you can actually read clearly - do not guess names. CGC/CBCS labels typically print credit lines verbatim like "[Name] story / [Name] art / [Name] cover" in small text below the title - if a label image is provided, read these credit lines character by character REGARDLESS OF THE IMAGE'S ROTATION OR ORIENTATION (labels are sometimes photographed sideways or upside-down on the slab's spine edge - mentally rotate and read the text anyway, don't skip it just because it's not right-side-up). Use exactly what's printed there as the authoritative source. The "cover" credit specifically is the cover artist for the artists field, "story" is the writer. If you can see this credit line at all, even partially, fill artists/writers from it - do not leave them blank when the credit text is visible in the image.
 - Page quality is on the CGC/CBCS label text
-- Serial = long number on barcode area of label. This number is used to look up the exact comic later, so accuracy matters more than for most fields - read each digit individually and carefully, do not rush. Digits like 3/8/9 and 1/7 are commonly confused - if any digit is genuinely unclear or blurry, note that in lowConfidenceFields rather than guessing which digit it is.
+- Serial = long number on barcode area of label. This number is used to look up the exact comic later, so accuracy matters more than for most fields. Before finalizing this field: read the number twice independently, digit by digit, then compare your two readings - if they match, use that number; if they don't match, that means the image isn't clear enough for a confident read, so put your best single reading in serial AND add "serial" to lowConfidenceFields so it gets flagged for a human to double check against the physical label. Digits like 3/8/9, 1/7, and 0/6 are commonly confused - never rush this field.
 - If a BACK cover image is provided, scan the ENTIRE back cover carefully for a printed alphanumeric code (e.g. "GFTV285N") - it can appear anywhere on the back (top, bottom, corner, near barcode, near price, anywhere), not just one fixed spot. This code encodes title abbreviation + volume + issue + variant letter and is usually present on standard/limited-edition releases, but is often ABSENT on showcase, gallery, or special art-only backs. Read it exactly as printed into backcode; leave blank if genuinely not present rather than guessing.
+- ALSO scan the back cover for any printed edition/print-run text such as "Limited to X", "Exclusive", convention names, or similar - this is often printed near the corner or bottom of variant/exclusive covers separately from the alphanumeric code. Capture any print run number you find into printrun even if it's only on the back cover, not the front.
+- The exact location of the variant identification text on the back cover VARIES by title and printing - it is not always in the same spot. Sometimes it's a small colored text block in a corner (e.g. black text on a red background), sometimes it's plain text positioned just above the UPC/barcode, sometimes elsewhere entirely. Do not assume one fixed location - systematically scan the ENTIRE back cover image, paying particular attention to: any area near the UPC/barcode (just above, below, or beside it), all four corners, and any small text blocks that stand out from the main art/ad content. This small text is often the actual authoritative variant identifier (letter, "Cover X", or code) and should take priority over any letter guessed from the front cover art alone.
 - Content rating: LEAVE THIS FIELD BLANK in this initial pass almost always - it will be cross-checked against documented publisher release info in a follow-up verification step, so do not guess it visually here. Zenescope and similar publishers routinely draw characters in shorts, cut-off shirts, swimwear, and form-fitting costumes as standard house art style, which is NOT a rating tier. Leave rating empty unless you have specific documented knowledge (not visual impression) that this exact cover is part of a known multi-tier release.
 - Compilation series: Zenescope is known for running parody/themed variant series where the cover art parodies a real-world product or brand (e.g. a character dressed as a cereal-box mascot with a parody brand name/logo like "Camelot Crisp", or similar parody-product themed covers) - these are typically part of a named annual or themed series (e.g. a "cereal box parody" series for a given year). If the cover shows this kind of parody-product theming, identify and name the series pattern (e.g. "[Year] Cereal Box Parody Series") even if you don't know the exact official series name, rather than leaving it blank - use your best specific description of the recognizable theme. For other covers, only name a compilation series if you recognize it, otherwise leave empty.
 - Volume field: leave blank if only one volume of this series has ever been published - do not guess "1".
@@ -1334,7 +1361,8 @@ function showDetail(id){
     ${c.notes?`<div class="dtbl"><div class="dth">Notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.notes)}</div></div>`:''}
     ${c.researchNotes?`<div class="dtbl"><div class="dth">Research notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.researchNotes)}</div></div>`:''}
     <div class="btn-row">
-      <button class="btn-sm" onclick="editComic('${c.id}')">Edit</button>
+      <button class="btn-sm" onclick="openQuickEdit('${c.id}')" style="background:var(--teal-l);border-color:var(--teal);color:#0F5038">&#9889; Quick Edit</button>
+      <button class="btn-sm" onclick="editComic('${c.id}')">Full Edit</button>
       <button class="btn-sm" onclick="ebay('${esc(c.title)}','${esc(c.issue)}','${esc(c.gradeco||'')}','${esc(c.grade||'')}')">eBay Sold</button>
       <button class="btn-sm" onclick="delComic('${c.id}')" style="background:var(--red-l);color:var(--red-d);border-color:var(--red)">Delete</button>
     </div><div style="height:20px"></div>`;
@@ -1346,7 +1374,8 @@ function dr(label,val,color=''){if(!val&&val!==0)return'';return`<div class="dr"
 
 function editComic(id){
   const c=coll.find(x=>x.id==id);if(!c)return;
-  editId=id;clearScan();
+  clearScan();
+  editId=id;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   document.getElementById('sScan').classList.add('on');
   document.getElementById('nbScan').classList.add('on');document.getElementById('nbGal').classList.remove('on');
@@ -1393,6 +1422,53 @@ function editComic(id){
 }
 function setPrev(n,src){const icon=document.getElementById('prev'+n).querySelector('.sicon');const img=document.getElementById('img'+n);if(icon)icon.style.display='none';if(img){img.src=src;img.style.display='block';}}
 function delComic(id){if(!confirm('Delete this comic?'))return;coll=coll.filter(c=>c.id!=id);saveColl();toast('Deleted');goGallery();}
+
+/* QUICK EDIT - lets you fix common small fields (grade, serial, box, prices, notes) right from the phone without opening the full scan form */
+let qeId=null;
+function openQuickEdit(id){
+  const c=coll.find(x=>x.id==id);if(!c)return;
+  qeId=id;
+  document.getElementById('qeTitle').textContent='Quick Edit: '+c.title+' #'+c.issue;
+  const boxLabel=c.type==='slabbed'?'Slab Box #':c.type==='signed'?'Signed Box #':'Raw Box #';
+  const boxVal=c.type==='slabbed'?(c.slabbox||''):c.type==='signed'?(c.signbox||''):(c.rawbox||'');
+  let html='';
+  if(c.type==='slabbed'){
+    html+=`<div class="mb"><div class="lbl">Numeric Grade</div><input type="text" id="qe_grade" value="${esc(c.grade||'')}" placeholder="9.8"></div>`;
+    html+=`<div class="mb"><div class="lbl">Serial / Cert #</div><input type="text" id="qe_serial" value="${esc(c.serial||'')}"></div>`;
+  } else {
+    html+=`<div class="mb"><div class="lbl">Condition</div><input type="text" id="qe_condition" value="${esc(c.condition||'')}"></div>`;
+  }
+  html+=`<div class="mb"><div class="lbl">${boxLabel}</div><input type="text" id="qe_box" value="${esc(boxVal)}"></div>`;
+  html+=`<div class="two mb"><div><div class="lbl">Purchase $</div><input type="number" step="0.01" id="qe_purchase" value="${c.purchase||''}"></div><div><div class="lbl">Declared Value $</div><input type="text" id="qe_declaredval" value="${esc(c.declaredval||'')}"></div></div>`;
+  html+=`<div class="mb"><div class="lbl">Est. Market $</div><input type="number" step="0.01" id="qe_marketval" value="${c.marketval||''}"></div>`;
+  html+=`<div class="mb"><div class="lbl">Notes</div><textarea id="qe_notes">${esc(c.notes||'')}</textarea></div>`;
+  document.getElementById('qeFields').innerHTML=html;
+  document.getElementById('qeOverlay').style.display='block';
+}
+function closeQuickEdit(){document.getElementById('qeOverlay').style.display='none';qeId=null;}
+function saveQuickEdit(){
+  const c=coll.find(x=>x.id==qeId);if(!c){closeQuickEdit();return;}
+  const gv2=(id)=>{const el=document.getElementById(id);return el?el.value.trim():undefined;};
+  if(c.type==='slabbed'){
+    const g=gv2('qe_grade');if(g!==undefined)c.grade=g;
+    const s=gv2('qe_serial');if(s!==undefined)c.serial=s;
+    const b=gv2('qe_box');if(b!==undefined)c.slabbox=b;
+  } else {
+    const cond=gv2('qe_condition');if(cond!==undefined)c.condition=cond;
+    const b=gv2('qe_box');
+    if(b!==undefined){if(c.type==='signed')c.signbox=b;else c.rawbox=b;}
+  }
+  const p=gv2('qe_purchase');if(p!==undefined)c.purchase=parseFloat(p)||null;
+  const dv=gv2('qe_declaredval');if(dv!==undefined)c.declaredval=dv;
+  const mv=gv2('qe_marketval');if(mv!==undefined)c.marketval=parseFloat(mv)||null;
+  const n=gv2('qe_notes');if(n!==undefined)c.notes=n;
+  // Re-check research flags now that fields have been filled in
+  c.researchFlags=genFlags(c);
+  saveColl();
+  closeQuickEdit();
+  toast('Updated!');
+  showDetail(c.id);
+}
 function ebay(title,issue,grader,grade){const q=encodeURIComponent([title,issue,grader,grade,'comic'].filter(Boolean).join(' '));window.open('https://www.ebay.com/sch/i.html?_nkw='+q+'&_sacat=259104&LH_Sold=1&LH_Complete=1','_blank');}
 
 function marketKey(c){
@@ -1517,6 +1593,21 @@ function doSave(){
     if(comic.signed)comic.researchFlags.push({q:'Scanned by helper: signature detected - please verify if real, witnessed, and who signed it'});
     if(document.getElementById('helperFlagReview')?.checked)comic.researchFlags.push({q:'Helper flagged this entry as unsure - please double-check all details'});
     if(lastAIConfidence!=null&&lastAIConfidence<80)comic.researchFlags.push({q:'Scanned by helper with AI confidence only '+lastAIConfidence+'% - please review against the physical comic'});
+  }
+  // Safety net: a slab's serial number is unique - if this exact serial already exists elsewhere in the collection, treat this as an update to that record instead of creating a duplicate, even if editId somehow got lost
+  if(!editId&&isSlab&&comic.serial&&comic.serial.trim()){
+    const serialMatch=coll.find(c=>c.type==='slabbed'&&c.serial&&c.serial.trim()===comic.serial.trim());
+    if(serialMatch){
+      comic.id=serialMatch.id;
+      // Preserve fields the new scan may not have captured (like existing photos) if the new save is missing them
+      if(!comic.img&&serialMatch.img)comic.img=serialMatch.img;
+      if(!comic.img2&&serialMatch.img2)comic.img2=serialMatch.img2;
+      if(!comic.img3&&serialMatch.img3)comic.img3=serialMatch.img3;
+      coll=coll.map(c=>c.id==serialMatch.id?comic:c);
+      saveColl();clearScan();goGallery();
+      toast('Matched existing slab by serial number - updated instead of duplicating');
+      return;
+    }
   }
   if(editId){coll=coll.map(c=>c.id==editId?comic:c);editId=null;toast('Updated!');}
   else{
