@@ -756,6 +756,7 @@ function onIssueInput(){
   const title=document.getElementById('f_title').value.trim();
   const issue=document.getElementById('f_issue').value.trim();
   if(!title||!issue)return;
+  suggestBox(title,issue);
   clearTimeout(acT.issue);
   acT.issue=setTimeout(async()=>{
     try{
@@ -763,6 +764,37 @@ function onIssueInput(){
       const d=JSON.parse(r);if(d.confidence>55)applyFill(d);
     }catch(e){}
   },700);
+}
+
+/* Suggest reusing the same storage box for copies of a title/issue you've already stored, so duplicates don't scatter across boxes scanned on different days */
+function suggestBox(title,issue){
+  if(!title||!issue||editId)return; // skip suggestion while editing an existing entry
+  const boxFieldByType={raw:'f_rawbox',signed:'f_signbox',slabbed:'f_slabbox'};
+  const fieldId=boxFieldByType[curType];
+  if(!fieldId)return;
+  const fieldEl=document.getElementById(fieldId);
+  if(!fieldEl)return;
+  // Find prior entries of the SAME title+issue+type (any variant/grade - shelved together by title/issue)
+  const matches=coll.filter(c=>c.title.toLowerCase().trim()===title.toLowerCase().trim()&&String(c.issue).trim()===String(issue).trim()&&c.type===curType);
+  const boxField={raw:'rawbox',signed:'signbox',slabbed:'slabbox'}[curType];
+  const existingBox=matches.map(c=>c[boxField]).find(b=>b&&b.trim());
+  if(!existingBox)return;
+  if(!fieldEl.value.trim()){
+    fieldEl.value=existingBox;
+    toast('Box auto-filled: "'+existingBox+'" - matches where you already store this title/issue');
+  }else if(fieldEl.value.trim()!==existingBox.trim()){
+    showBoxConflict(fieldId,existingBox,fieldEl.value.trim());
+  }
+}
+function showBoxConflict(fieldId,existingBox,typedBox){
+  const box=document.getElementById('varConflictBox');
+  if(!box)return;
+  box.style.display='block';
+  box.innerHTML=`You already have this same title/issue stored in <strong>${esc(existingBox)}</strong>, but this entry says <strong>${esc(typedBox)}</strong>. Keep copies of the same comic together?
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn-sm" style="background:var(--gold);color:#412402;border:none" onclick="document.getElementById('${fieldId}').value='${esc(existingBox)}';document.getElementById('varConflictBox').style.display='none'">Use ${esc(existingBox)}</button>
+      <button class="btn-sm" onclick="document.getElementById('varConflictBox').style.display='none'">Keep ${esc(typedBox)}</button>
+    </div>`;
 }
 
 function onVarLetterInput(){
@@ -927,7 +959,7 @@ RULES:
 - Serial = long number on barcode area of label. This number is used to look up the exact comic later, so accuracy matters more than for most fields - read each digit individually and carefully, do not rush. Digits like 3/8/9 and 1/7 are commonly confused - if any digit is genuinely unclear or blurry, note that in lowConfidenceFields rather than guessing which digit it is.
 - If a BACK cover image is provided, scan the ENTIRE back cover carefully for a printed alphanumeric code (e.g. "GFTV285N") - it can appear anywhere on the back (top, bottom, corner, near barcode, near price, anywhere), not just one fixed spot. This code encodes title abbreviation + volume + issue + variant letter and is usually present on standard/limited-edition releases, but is often ABSENT on showcase, gallery, or special art-only backs. Read it exactly as printed into backcode; leave blank if genuinely not present rather than guessing.
 - Content rating: LEAVE THIS FIELD BLANK in this initial pass almost always - it will be cross-checked against documented publisher release info in a follow-up verification step, so do not guess it visually here. Zenescope and similar publishers routinely draw characters in shorts, cut-off shirts, swimwear, and form-fitting costumes as standard house art style, which is NOT a rating tier. Leave rating empty unless you have specific documented knowledge (not visual impression) that this exact cover is part of a known multi-tier release.
-- Compilation series: if the cover appears to be part of a themed multi-issue set (e.g. a year-long monthly cosplay/character series), name that series if you recognize it, otherwise leave empty.
+- Compilation series: Zenescope is known for running parody/themed variant series where the cover art parodies a real-world product or brand (e.g. a character dressed as a cereal-box mascot with a parody brand name/logo like "Camelot Crisp", or similar parody-product themed covers) - these are typically part of a named annual or themed series (e.g. a "cereal box parody" series for a given year). If the cover shows this kind of parody-product theming, identify and name the series pattern (e.g. "[Year] Cereal Box Parody Series") even if you don't know the exact official series name, rather than leaving it blank - use your best specific description of the recognizable theme. For other covers, only name a compilation series if you recognize it, otherwise leave empty.
 - Volume field: leave blank if only one volume of this series has ever been published - do not guess "1".
 
 Return ONLY valid JSON:
@@ -1061,6 +1093,8 @@ function fillForm(d){
   }
   document.getElementById('scanForm').classList.add('on');
   document.getElementById('content').scrollTo(0,0);
+  // Suggest storage box based on where this same title/issue is already stored
+  if(gv('f_title')&&gv('f_issue'))setTimeout(()=>suggestBox(gv('f_title'),gv('f_issue')),350);
 }
 
 function updateLblPill(c,id){const p=document.getElementById('lblPill');if(p){p.textContent=id;p.style.background=c;}}
@@ -1126,6 +1160,8 @@ function setType(t){
   if(sigSec)sigSec.style.display=(t==='signed'||document.getElementById('manSig')?.checked)?'block':'none';
   const msw=document.getElementById('manSigWrap');if(msw)msw.style.display=t==='signed'?'none':'block';
   if(t==='slabbed')onGrader();
+  const t2=gv('f_title'),i2=gv('f_issue');
+  if(t2&&i2)setTimeout(()=>suggestBox(t2,i2),100);
 }
 function onManSig(){const c=document.getElementById('manSig')?.checked;const s=document.getElementById('sigSec');if(s)s.style.display=(c||curType==='signed')?'block':'none';}
 function onSigType(){const t=gv('f_sigtype');const nw=document.getElementById('sigNameWrap');const aw=document.getElementById('sigAuthWrap');if(nw)nw.style.display=t==='facsimile'?'none':'block';if(aw)aw.style.display=(t==='unwitnessed'||t==='edition-wide'||t==='facsimile')?'none':'block';}
@@ -1290,8 +1326,11 @@ function showDetail(id){
       ${dr('Purchase',c.purchase?'$'+c.purchase.toFixed(2):'--')}${dr('Date',c.purchasedate||'--')}
       ${dr('Source',c.source||'--')}${dr('Declared Value',c.declaredval?'$'+parseFloat(c.declaredval).toFixed(2):'--')}
       ${dr('Market Value',c.marketval?'$'+c.marketval.toFixed(2):'--')}
+      ${c.marketNote?dr('Market note',`<span style="font-size:11px">${esc(c.marketNote)}</span>`):''}
+      ${c.marketChecked?dr('Checked',c.marketChecked):''}
       ${dr('Sale Price',c.sale?`<span style="color:var(--teal);font-weight:600">$${c.sale.toFixed(2)}</span>`:'--')}${dr('Sale Date',c.saledate||'--')}
     </div>
+    <button class="btn-sm" id="mvBtn" onclick="checkMarketValue('${c.id}',${c.marketChecked?'true':'false'})" style="margin-bottom:12px;background:var(--teal-l);border-color:var(--teal);color:#0F5038">&#128269; ${c.marketChecked?'Refresh':'Check'} Market Value</button>
     ${c.notes?`<div class="dtbl"><div class="dth">Notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.notes)}</div></div>`:''}
     ${c.researchNotes?`<div class="dtbl"><div class="dth">Research notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.researchNotes)}</div></div>`:''}
     <div class="btn-row">
@@ -1299,6 +1338,9 @@ function showDetail(id){
       <button class="btn-sm" onclick="ebay('${esc(c.title)}','${esc(c.issue)}','${esc(c.gradeco||'')}','${esc(c.grade||'')}')">eBay Sold</button>
       <button class="btn-sm" onclick="delComic('${c.id}')" style="background:var(--red-l);color:var(--red-d);border-color:var(--red)">Delete</button>
     </div><div style="height:20px"></div>`;
+  // Auto-check market value: first time, or if stale (>30 days since last check)
+  const daysSince=c.marketChecked?(Date.now()-new Date(c.marketChecked).getTime())/86400000:Infinity;
+  if(daysSince>180){setTimeout(()=>checkMarketValue(id),300);}
 }
 function dr(label,val,color=''){if(!val&&val!==0)return'';return`<div class="dr"><span class="dl">${label}</span><span class="dv"${color?` style="color:${color}"`:''}}>${val}</span></div>`;}
 
@@ -1352,6 +1394,68 @@ function editComic(id){
 function setPrev(n,src){const icon=document.getElementById('prev'+n).querySelector('.sicon');const img=document.getElementById('img'+n);if(icon)icon.style.display='none';if(img){img.src=src;img.style.display='block';}}
 function delComic(id){if(!confirm('Delete this comic?'))return;coll=coll.filter(c=>c.id!=id);saveColl();toast('Deleted');goGallery();}
 function ebay(title,issue,grader,grade){const q=encodeURIComponent([title,issue,grader,grade,'comic'].filter(Boolean).join(' '));window.open('https://www.ebay.com/sch/i.html?_nkw='+q+'&_sacat=259104&LH_Sold=1&LH_Complete=1','_blank');}
+
+function marketKey(c){
+  const gradeOrCond=c.type==='slabbed'?(c.grade||''):(c.condition||'');
+  return [c.title.toLowerCase().trim(),String(c.issue).trim(),(c.varletter||'').toUpperCase(),c.type,gradeOrCond,c.signed?'1':'0'].join('|');
+}
+
+async function checkMarketValue(id,force){
+  const key=getKey();
+  if(!key){toast('Add your Claude API key in Settings');return;}
+  const c=coll.find(x=>x.id==id);if(!c)return;
+  const btn=document.getElementById('mvBtn');
+
+  // Look for a matching comic (same title/issue/variant/type/grade-or-condition/signed status) with a recent check already done - reuse it instead of a new API call
+  if(!force){
+    const mk=marketKey(c);
+    const match=coll.find(other=>other.id!==c.id&&marketKey(other)===mk&&other.marketChecked&&other.marketval&&((Date.now()-new Date(other.marketChecked).getTime())/86400000)<=180);
+    if(match){
+      c.marketval=match.marketval;
+      c.marketNote=(match.marketNote||'')+' (copied from a matching copy in your collection - same title/issue/variant/grade)';
+      c.marketChecked=match.marketChecked;
+      saveColl();
+      toast('Market value copied from a matching copy: $'+c.marketval);
+      showDetail(id);
+      return;
+    }
+  }
+
+  if(btn){btn.disabled=true;btn.textContent='Searching eBay & sold listings...';}
+  try{
+    const desc=[c.title,'#'+c.issue,c.varletter?'Cover '+c.varletter:'',c.variant,c.type==='slabbed'?(c.gradeco+' '+c.grade):c.type==='signed'?'signed':'raw '+ (c.condition||''),c.limited?'Limited to '+c.printrun:''].filter(Boolean).join(' ');
+    const prompt=`Search eBay sold listings and other comic marketplaces (like MyComicShop, Whatnot, Heritage Auctions) for recent actual SOLD prices of this specific comic: ${desc}. Find real comparable sales from the last several months if possible. Return ONLY valid JSON: {"low":0,"high":0,"average":0,"basedOn":"brief note on what listings you found, e.g. '3 sold listings on eBay in the last 90 days'","confidence":"high|medium|low","sourceNote":"any caveat, e.g. 'few comps available' or empty"}`;
+    const r=await fetch(WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-opus-4-5',max_tokens:1000,messages:[{role:'user',content:prompt}],tools:[{type:'web_search_20250305',name:'web_search'}]})
+    });
+    const data=await r.json();
+    if(data.error)throw new Error(data.error.message);
+    const textBlock=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    const jsonMatch=textBlock.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)throw new Error('Could not parse market data');
+    const result=JSON.parse(jsonMatch[0]);
+    c.marketval=result.average||result.high||c.marketval;
+    c.marketNote=`Range $${result.low||'?'}-$${result.high||'?'} (${result.confidence||'?'} confidence). ${result.basedOn||''} ${result.sourceNote||''}`.trim();
+    c.marketChecked=new Date().toISOString().split('T')[0];
+    // Propagate this same result to any other matching copies so they don't need their own API call
+    const mk2=marketKey(c);
+    coll.forEach(other=>{
+      if(other.id!==c.id&&marketKey(other)===mk2){
+        other.marketval=c.marketval;
+        other.marketNote=c.marketNote+' (shared from a matching copy)';
+        other.marketChecked=c.marketChecked;
+      }
+    });
+    saveColl();
+    toast('Market value updated: $'+(c.marketval||'?'));
+    showDetail(id);
+  }catch(err){
+    toast('Market check failed: '+err.message);
+    if(btn){btn.disabled=false;btn.textContent='🔍 Check Market Value';}
+  }
+}
 
 function findRawDup(title,issue){return coll.find(c=>c.type==='raw'&&!c.signed&&c.title.toLowerCase()===title.toLowerCase()&&String(c.issue)===String(issue));}
 
