@@ -911,6 +911,8 @@ async function analyzeComic(){
 
 ABSOLUTE RULE - NEVER GUESS OR FABRICATE: If you cannot clearly read or confidently determine a value, leave that field as an empty string "" (or false/null for booleans). Do NOT invent plausible-sounding names, numbers, or descriptions. A wrong guess is worse than a blank field. Only fill a field if you actually see it in the image or are highly confident from clear knowledge - never pad "Set Position" with "None" or "Total Covers" with "0" just to fill it in; leave those blank if not applicable.
 
+CONSISTENCY RULE: The varletter field is the single source of truth for the variant letter. Never mention a different or conflicting variant letter anywhere else in your response (not in editionnotes, not in variant description, not implied anywhere) - if genuinely uncertain between two possible letters, put your best answer in varletter and explain the uncertainty in lowConfidenceFields, never contradict it elsewhere.
+
 RULES:
 - Variant letters are single letters (A,B,C...L etc) on cover or label
 - "1 of 2" = SET POSITION. "Limited to 350" = PRINT RUN. These are different fields - only fill if you actually see this info
@@ -923,8 +925,8 @@ RULES:
 - List ONLY artists/writers whose names you can actually read clearly - do not guess names
 - Page quality is on the CGC/CBCS label text
 - Serial = long number on barcode area of label
-- If a BACK cover image is provided, look for a printed alphanumeric code (e.g. "GFTV285N") often near the barcode - this encodes title abbreviation + volume + issue + variant letter. Read it exactly as printed into backcode.
-- Content rating: assess the cover art itself for coverage/explicitness and classify as PG (fully clothed/all ages), Risque (lingerie/suggestive), Nude (topless/explicit), or Line Art (uncolored sketch art). Leave empty if unclear or not applicable (most standard covers are not explicit enough to need a rating - only flag if it's part of a known multi-tier release).
+- If a BACK cover image is provided, scan the ENTIRE back cover carefully for a printed alphanumeric code (e.g. "GFTV285N") - it can appear anywhere on the back (top, bottom, corner, near barcode, near price, anywhere), not just one fixed spot. This code encodes title abbreviation + volume + issue + variant letter and is usually present on standard/limited-edition releases, but is often ABSENT on showcase, gallery, or special art-only backs. Read it exactly as printed into backcode; leave blank if genuinely not present rather than guessing.
+- Content rating: LEAVE THIS FIELD BLANK in this initial pass almost always - it will be cross-checked against documented publisher release info in a follow-up verification step, so do not guess it visually here. Zenescope and similar publishers routinely draw characters in shorts, cut-off shirts, swimwear, and form-fitting costumes as standard house art style, which is NOT a rating tier. Leave rating empty unless you have specific documented knowledge (not visual impression) that this exact cover is part of a known multi-tier release.
 - Compilation series: if the cover appears to be part of a themed multi-issue set (e.g. a year-long monthly cosplay/character series), name that series if you recognize it, otherwise leave empty.
 - Volume field: leave blank if only one volume of this series has ever been published - do not guess "1".
 
@@ -945,7 +947,11 @@ Return ONLY valid JSON:
       document.getElementById('spinMsg').textContent='Verifying and filling gaps...';
       document.getElementById('spinSub').textContent='Cross-checking print runs, creator credits, edition details...';
       try{
-        const vp=`For "${result.title}" #${result.issue}${result.varletter?' Cover '+result.varletter:''}${result.grader?' ('+result.grader+' '+result.grade+')':''}, verify and fill these empty fields using your knowledge: printrun=${result.printrun||'?'}, edtype=${result.edtype||'?'}, event=${result.event||'?'}, artists=${JSON.stringify(result.artists)}, writers=${JSON.stringify(result.writers)}, pageQuality=${result.pageQuality||'?'}, serial=${result.serial||'?'}. Return ONLY valid JSON: {"printrun":"","edtype":"","event":"","artists":[],"writers":[],"pageQuality":"","serial":"","additionalNotes":""}`;
+        const vp=`For "${result.title}" #${result.issue}${result.varletter?' Cover '+result.varletter:''}${result.grader?' ('+result.grader+' '+result.grade+')':''}, verify and fill these empty fields using your knowledge: printrun=${result.printrun||'?'}, edtype=${result.edtype||'?'}, event=${result.event||'?'}, artists=${JSON.stringify(result.artists)}, writers=${JSON.stringify(result.writers)}, pageQuality=${result.pageQuality||'?'}, serial=${result.serial||'?'}. The variant letter is already confirmed as "${result.varletter||'unknown'}" - do NOT mention or imply a different variant letter anywhere in your response, including in additionalNotes. If you believe the variant letter is wrong, put that specific concern in varConflict instead.
+
+Also: if you specifically know that this exact title/issue/cover letter combination was officially released by the publisher as part of a documented multi-tier content set (e.g. the publisher sold this same image as a clothed version, a lingerie version, AND a topless version as separate labeled covers, and you know which tier THIS specific letter is), report that documented tier in "rating". Only fill rating if you have real knowledge of this specific release's documented tier structure - do not guess from general visual impression, and leave blank if you don't have confident specific knowledge of this release.
+
+Return ONLY valid JSON: {"printrun":"","edtype":"","event":"","artists":[],"writers":[],"pageQuality":"","serial":"","additionalNotes":"","varConflict":"only fill if you have strong reason to believe the variant letter is wrong, else empty","rating":"PG|Risque|Nude|Line Art|empty - only if documented, else empty"}`;
         const vr=await callClaude(vp);
         const verified=JSON.parse(vr);
         if(!result.printrun&&verified.printrun)result.printrun=verified.printrun;
@@ -956,6 +962,9 @@ Return ONLY valid JSON:
         if(!result.pageQuality&&verified.pageQuality)result.pageQuality=verified.pageQuality;
         if(!result.serial&&verified.serial)result.serial=verified.serial;
         if(verified.additionalNotes)result._notes=verified.additionalNotes;
+        if(verified.varConflict)result._varConflict=verified.varConflict;
+        // Documented rating from verification (cross-referenced against known publisher release info) takes priority over any visual guess
+        if(verified.rating)result.rating=verified.rating;
       }catch(e){console.log('Verify step:',e);}
     }
 
@@ -996,6 +1005,10 @@ function fillForm(d){
     if(d.edtype){const el=document.getElementById('f_edtype');if(el&&el.querySelector(`option[value="${d.edtype}"]`))el.value=d.edtype;}
   }
   if(d._notes){const el=document.getElementById('f_notes');if(el&&!el.value)el.value=d._notes;}
+  if(d._varConflict){
+    const box=document.getElementById('varConflictBox');
+    if(box){box.style.display='block';box.innerHTML='Possible variant letter issue: '+esc(d._varConflict)+' Please check the cover/label directly.';}
+  }
   if(d.isSlabbed){
     setType('slabbed');
     if(d.grader){const el=document.getElementById('f_grader');if(el){el.value=d.grader;onGrader();}}
