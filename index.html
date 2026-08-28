@@ -286,8 +286,7 @@ input[type=file]{display:none}
         </div>
         <div class="storage-box">
           <div class="storage-hdr">&#128230; Storage location <span style="font-weight:400;text-transform:none">&mdash; which box is this going in?</span></div>
-          <div id="stRaw"><div class="lbl">Raw box #</div><input type="text" id="f_rawbox" placeholder="e.g. Box 12"></div>
-          <div id="stSign" style="display:none"><div class="lbl">Signed box #</div><input type="text" id="f_signbox" placeholder="e.g. Signed Box 3"></div>
+          <div id="stRaw"><div class="lbl" id="rawBoxLbl">Raw/Signed box # <span style="font-weight:400;text-transform:none;color:var(--hint)">(unslabbed comics, signed or not, usually store together)</span></div><input type="text" id="f_rawbox" placeholder="e.g. Box 12"></div>
           <div id="stSlab" style="display:none"><div class="lbl">Slab box #</div><input type="text" id="f_slabbox" placeholder="e.g. Slab Box 5"></div>
         </div>
         <div class="owner-only">
@@ -605,11 +604,22 @@ input[type=file]{display:none}
         <div class="mb"><div class="lbl">Claude API Key</div><input type="password" id="setKey" placeholder="sk-ant-..."></div>
         <button class="btn red mb" onclick="saveSettings()">Save</button>
         <button class="btn teal mb" onclick="syncFromSheet()">&#128260; Pull latest from Google Sheet</button>
+        <button class="btn out mb" onclick="goBoxes()">&#128230; Box Overview</button>
         <button class="btn out mb" onclick="exportCSV()">&#128202; Export to CSV / Excel</button>
         <button class="btn out" onclick="goGallery()">Back to Collection</button>
       </div>
       <div class="card"><h2 style="font-size:14px">&#128269; Research flags</h2><p>Flagged records appear at the top of your collection on your laptop with specific questions. On iPhone they're silently marked so scanning stays fast.</p></div>
       <div class="card"><h2 style="font-size:14px">CGC Label Guide</h2><p>&#128309; Universal &middot; &#128993; Signature Series &middot; &#128993;&#9898; CGC&times;JSA &middot; &#128994; Qualified &middot; &#128995; Restored &middot; &#128996; Pedigree &middot; &#9898; Conserved &middot; &#127912; Custom</p></div>
+    </div>
+
+    <!-- BOX OVERVIEW -->
+    <div class="screen" id="sBoxes">
+      <button class="back-btn" onclick="goSettings()">&lsaquo; Settings</button>
+      <div class="card">
+        <h2>&#128230; Box Overview</h2>
+        <p>Tap a box's capacity to set how many it should hold before you start a new one. Slab boxes are usually a consistent size, so this helps you know when to switch boxes while keeping matching comics together.</p>
+      </div>
+      <div id="boxList"></div>
     </div>
 
   </div>
@@ -713,6 +723,63 @@ function showMsg(el,type,text){
 function goScan(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sScan').classList.add('on');document.getElementById('nbScan').classList.add('on');}
 function goGallery(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sGallery').classList.add('on');document.getElementById('nbGal').classList.add('on');renderGallery();updateStats();renderResearchPanel();}
 function goSettings(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('sSettings').classList.add('on');document.getElementById('setKey').value=getKey();}
+
+/* BOX OVERVIEW - counts of comics per box, with optional capacity targets so slab boxes can be tracked as they fill up */
+function goBoxes(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('sBoxes').classList.add('on');renderBoxes();}
+
+function getBoxCapacities(){try{return JSON.parse(ls('cv_boxCap')||'{}');}catch(e){return{};}}
+function setBoxCapacity(key,val){const caps=getBoxCapacities();if(val){caps[key]=val;}else{delete caps[key];}lsSet('cv_boxCap',JSON.stringify(caps));}
+
+function getBoxStats(){
+  const boxes={}; // key: "bucketType|boxname" -> {type, name, count, items}
+  coll.forEach(c=>{
+    const isSlabC=c.type==='slabbed';
+    const bucketType=isSlabC?'slabbed':'raw'; // raw and signed share the same physical box pool
+    const boxName=isSlabC?c.slabbox:c.rawbox;
+    if(!boxName||!boxName.trim())return;
+    const key=bucketType+'|'+boxName.trim();
+    if(!boxes[key])boxes[key]={type:bucketType,name:boxName.trim(),count:0,items:[]};
+    boxes[key].count+=(!isSlabC?(c.qty||1):1);
+    boxes[key].items.push(c);
+  });
+  return Object.values(boxes).sort((a,b)=>a.type===b.type?a.name.localeCompare(b.name):a.type.localeCompare(b.type));
+}
+
+function renderBoxes(){
+  const stats=getBoxStats();
+  const caps=getBoxCapacities();
+  const el=document.getElementById('boxList');
+  if(!stats.length){el.innerHTML='<div class="empty"><div style="font-size:40px;margin-bottom:10px">&#128230;</div><div style="font-weight:600">No boxes yet</div><div style="font-size:13px">Boxes will appear here once you start scanning comics.</div></div>';return;}
+  const typeLabel={raw:'Raw/Signed',slabbed:'Slab'};
+  const typeIcon={raw:'&#128230;',slabbed:'&#128311;'};
+  // (typeIcon already defined above with typeLabel)
+  el.innerHTML=stats.map(b=>{
+    const capKey=b.type+'|'+b.name;
+    const cap=caps[capKey];
+    const pct=cap?Math.min(100,Math.round(b.count/cap*100)):null;
+    const isFull=cap&&b.count>=cap;
+    const barColor=isFull?'var(--red)':pct>=80?'var(--gold)':'var(--teal)';
+    return `<div class="card" style="padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-weight:600">${typeIcon[b.type]} ${esc(b.name)} <span style="font-size:11px;color:var(--muted);font-weight:400">(${typeLabel[b.type]})</span></div>
+        <div style="font-size:15px;font-weight:700">${b.count}${cap?' / '+cap:''}</div>
+      </div>
+      ${cap?`<div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${pct}%;background:${barColor}"></div></div>${isFull?'<div style="font-size:12px;color:var(--red);font-weight:600;margin-bottom:8px">&#9888;&#65039; This box is full &mdash; consider starting a new box for new copies of these titles</div>':''}`:''}
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="number" placeholder="Set capacity target" value="${cap||''}" style="margin:0;flex:1;font-size:12px;padding:6px 10px" onchange="setBoxCapacity('${capKey}',this.value?parseInt(this.value):null);renderBoxes()">
+        <button class="btn-sm" onclick="showBoxItems('${capKey}')">View items</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showBoxItems(capKey){
+  const stats=getBoxStats();
+  const box=stats.find(b=>(b.type+'|'+b.name)===capKey);
+  if(!box)return;
+  const list=box.items.map(c=>`${c.title} #${c.issue}${c.varletter?' Cvr '+c.varletter:''}${c.type==='slabbed'?' ('+esc(c.gradeco||'')+' '+esc(c.grade||'')+')':c.type==='raw'?' x'+(c.qty||1):''}`).join('\n');
+  alert(box.name+' contains:\n\n'+list);
+}
 function saveSettings(){saveKey(document.getElementById('setKey').value.trim());toast('Settings saved');goGallery();}
 
 /* AUTOCOMPLETE */
@@ -797,19 +864,24 @@ function onIssueInput(){
 /* Suggest reusing the same storage box for copies of a title/issue you've already stored, so duplicates don't scatter across boxes scanned on different days */
 function suggestBox(title,issue){
   if(!title||!issue||editId)return; // skip suggestion while editing an existing entry
-  const boxFieldByType={raw:'f_rawbox',signed:'f_signbox',slabbed:'f_slabbox'};
-  const fieldId=boxFieldByType[curType];
-  if(!fieldId)return;
+  const fieldId=curType==='slabbed'?'f_slabbox':'f_rawbox';
   const fieldEl=document.getElementById(fieldId);
   if(!fieldEl)return;
-  // Find prior entries of the SAME title+issue+type (any variant/grade - shelved together by title/issue)
-  const matches=coll.filter(c=>c.title.toLowerCase().trim()===title.toLowerCase().trim()&&String(c.issue).trim()===String(issue).trim()&&c.type===curType);
-  const boxField={raw:'rawbox',signed:'signbox',slabbed:'slabbox'}[curType];
-  const existingBox=matches.map(c=>c[boxField]).find(b=>b&&b.trim());
+  // Storage is physical, not by signed-status: unslabbed (raw+signed) share one box pool, slabbed is its own pool
+  const isSlabNow=curType==='slabbed';
+  const matches=coll.filter(c=>c.title.toLowerCase().trim()===title.toLowerCase().trim()&&String(c.issue).trim()===String(issue).trim()&&(c.type==='slabbed')===isSlabNow);
+  const existingBox=matches.map(c=>isSlabNow?c.slabbox:c.rawbox).find(b=>b&&b.trim());
   if(!existingBox)return;
+  const bucketType=isSlabNow?'slabbed':'raw';
   if(!fieldEl.value.trim()){
     fieldEl.value=existingBox;
-    toast('Box auto-filled: "'+existingBox+'" - matches where you already store this title/issue');
+    const stats=getBoxStats();
+    const box=stats.find(b=>b.type===bucketType&&b.name===existingBox.trim());
+    const countNote=box?(' - it currently has '+box.count+' comics'):'';
+    const caps=getBoxCapacities();
+    const cap=caps[bucketType+'|'+existingBox.trim()];
+    const fullWarn=cap&&box&&box.count>=cap?' (FULL - consider a new box)':'';
+    toast('Box auto-filled: "'+existingBox+'" - matches where you already store this title/issue'+countNote+fullWarn);
   }else if(fieldEl.value.trim()!==existingBox.trim()){
     showBoxConflict(fieldId,existingBox,fieldEl.value.trim());
   }
@@ -1188,8 +1260,7 @@ function setType(t){
   document.getElementById('rawSec').style.display=t==='raw'?'block':'none';
   document.getElementById('signSec').style.display=t==='signed'?'block':'none';
   document.getElementById('slabSec').style.display=t==='slabbed'?'block':'none';
-  document.getElementById('stRaw').style.display=t==='raw'?'block':'none';
-  document.getElementById('stSign').style.display=t==='signed'?'block':'none';
+  document.getElementById('stRaw').style.display=(t==='raw'||t==='signed')?'block':'none';
   document.getElementById('stSlab').style.display=t==='slabbed'?'block':'none';
   // Label slot always visible - helper may not know in advance if it's slabbed
   const sigSec=document.getElementById('sigSec');
@@ -1308,7 +1379,28 @@ function showDetail(id){
   const bClass=isSlab?'b-slab':isSigned?'b-sig':'b-raw';
   const typeLabel=isSlab?'Slabbed':c.type==='signed'?'Signed':'Raw';
   const hasR=c.researchFlags&&c.researchFlags.length>0;
+  // Total copies of this same title+issue across ALL types, broken down by raw/slabbed AND by signer, so you never accidentally sell your last one of a specific version
+  const siblings=coll.filter(x=>x.title.toLowerCase().trim()===c.title.toLowerCase().trim()&&String(x.issue).trim()===String(c.issue).trim());
+  const groups={};
+  siblings.forEach(x=>{
+    const isSlabX=x.type==='slabbed';
+    const bucket=isSlabX?'slabbed':'raw';
+    const signerKey=x.signed?(x.signedby&&x.signedby.trim()?x.signedby.trim():'unknown signer'):'';
+    const key=bucket+'|'+(x.signed?'signed|'+signerKey:'unsigned');
+    if(!groups[key])groups[key]={bucket,signed:!!x.signed,signer:signerKey,count:0};
+    groups[key].count+=(bucket==='raw'&&!x.signed?(x.qty||1):1);
+  });
+  const groupList=Object.values(groups);
+  const grandTotal=groupList.reduce((s,g)=>s+g.count,0);
+  const breakdownLines=groupList.map(g=>{
+    if(!g.signed)return g.count+' '+g.bucket+' (unsigned)';
+    return g.count+' '+g.bucket+' signed by '+esc(g.signer);
+  });
   document.getElementById('detailBody').innerHTML=`
+    ${grandTotal>1?`<div style="background:var(--teal-l);border:1px solid var(--teal);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#0F5038">
+      <strong>You own ${grandTotal} total copies</strong> of ${esc(c.title)} #${esc(c.issue)}:
+      <ul style="margin:6px 0 0 18px;padding:0">${breakdownLines.map(l=>`<li>${l}</li>`).join('')}</ul>
+    </div>`:grandTotal===1?`<div style="background:var(--red-l);border:1px solid var(--red);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--red-d)"><strong>&#9888;&#65039; This is your only copy</strong> of ${esc(c.title)} #${esc(c.issue)} &mdash; think twice before selling.</div>`:''}
     <div class="dh">
       ${c.img?`<img src="${c.img}" class="dt" alt="">`:'<div class="dtp">📚</div>'}
       <div style="flex:1;min-width:0">
@@ -1403,7 +1495,7 @@ function editComic(id){
   if(c.writers)c.writers.split(',').map(w=>w.trim()).filter(Boolean).forEach(w=>addTagVal('writer',w));
   if(c.chars)c.chars.split(',').map(ch=>ch.trim()).filter(Boolean).forEach(ch=>addTagVal('char',ch));
   s('f_key',c.key);s('f_arc',c.arc);
-  s('f_rawbox',c.rawbox);s('f_signbox',c.signbox);s('f_slabbox',c.slabbox);
+  s('f_rawbox',c.rawbox||c.signbox);s('f_slabbox',c.slabbox);
   if(c.wraparound){const el=document.getElementById('f_wrap');if(el)el.checked=true;}
   if(c.backinfo){const el=document.getElementById('f_backinfo');if(el)el.checked=true;}
   s('f_printrun',c.printrun);s('f_copynum',c.copynum);s('f_setpos',c.setpos);s('f_settotal',c.settotal);
@@ -1439,8 +1531,8 @@ function openQuickEdit(id){
   const c=coll.find(x=>x.id==id);if(!c)return;
   qeId=id;
   document.getElementById('qeTitle').textContent='Quick Edit: '+c.title+' #'+c.issue;
-  const boxLabel=c.type==='slabbed'?'Slab Box #':c.type==='signed'?'Signed Box #':'Raw Box #';
-  const boxVal=c.type==='slabbed'?(c.slabbox||''):c.type==='signed'?(c.signbox||''):(c.rawbox||'');
+  const boxLabel=c.type==='slabbed'?'Slab Box #':'Raw/Signed Box #';
+  const boxVal=c.type==='slabbed'?(c.slabbox||''):(c.rawbox||c.signbox||'');
   let html='';
   if(c.type==='slabbed'){
     html+=`<div class="mb"><div class="lbl">Numeric Grade</div><input type="text" id="qe_grade" value="${esc(c.grade||'')}" placeholder="9.8"></div>`;
@@ -1466,7 +1558,7 @@ function saveQuickEdit(){
   } else {
     const cond=gv2('qe_condition');if(cond!==undefined)c.condition=cond;
     const b=gv2('qe_box');
-    if(b!==undefined){if(c.type==='signed')c.signbox=b;else c.rawbox=b;}
+    if(b!==undefined)c.rawbox=b;
   }
   const p=gv2('qe_purchase');if(p!==undefined)c.purchase=parseFloat(p)||null;
   const dv=gv2('qe_declaredval');if(dv!==undefined)c.declaredval=dv;
@@ -1587,7 +1679,7 @@ function doSave(){
     type:curType,signed:isSigned||isSS,sigtype,signedby:sigtype!=='facsimile'?gv('f_signedby'):'',
     auth:sigtype==='witnessed'?gv('f_auth'):'',inscription:gv('f_inscription'),hasSketch,sketchDesc:hasSketch?gv('f_sketchDesc'):'',
     qty:isSlab||isSigned?1:(parseInt(gv('f_qty'))||1),condition:cond,
-    rawbox:gv('f_rawbox'),signbox:gv('f_signbox'),slabbox:gv('f_slabbox'),
+    rawbox:(curType==='raw'||curType==='signed')?gv('f_rawbox'):'',signbox:'',slabbox:isSlab?gv('f_slabbox'):'',
     gradeco:isSlab?gv('f_grader'):'',label:isSlab?selLabel:'',
     pages:isSlab?gv('f_pages'):'',serial:isSlab?gv('f_serial'):'',restoregrade:isSlab?gv('f_restore'):'',
     limited:hasLtd,printrun:gv('f_printrun'),copynum:gv('f_copynum'),numtype:gv('f_numtype'),
@@ -1604,19 +1696,36 @@ function doSave(){
     if(document.getElementById('helperFlagReview')?.checked)comic.researchFlags.push({q:'Helper flagged this entry as unsure - please double-check all details'});
     if(lastAIConfidence!=null&&lastAIConfidence<80)comic.researchFlags.push({q:'Scanned by helper with AI confidence only '+lastAIConfidence+'% - please review against the physical comic'});
   }
-  // Safety net: a slab's serial number is unique - if this exact serial already exists elsewhere in the collection, treat this as an update to that record instead of creating a duplicate, even if editId somehow got lost
+  // Safety net: a slab's serial number is unique - if this exact serial already exists elsewhere in the collection, treat this as an update to that record instead of creating a duplicate, even if editId somehow got lost.
+  // Exception: if the matched record was already marked SOLD, this scan likely means the same physical comic was bought back - ask rather than silently merging into a sold record.
   if(!editId&&isSlab&&comic.serial&&comic.serial.trim()){
     const serialMatch=coll.find(c=>c.type==='slabbed'&&c.serial&&c.serial.trim()===comic.serial.trim());
     if(serialMatch){
-      comic.id=serialMatch.id;
-      // Preserve fields the new scan may not have captured (like existing photos) if the new save is missing them
-      if(!comic.img&&serialMatch.img)comic.img=serialMatch.img;
-      if(!comic.img2&&serialMatch.img2)comic.img2=serialMatch.img2;
-      if(!comic.img3&&serialMatch.img3)comic.img3=serialMatch.img3;
-      coll=coll.map(c=>c.id==serialMatch.id?comic:c);
-      saveColl();clearScan();goGallery();
-      toast('Matched existing slab by serial number - updated instead of duplicating');
-      return;
+      const wasSold=!!(serialMatch.sale||serialMatch.saledate);
+      if(wasSold){
+        const buyback=confirm('This serial number matches a copy you previously marked as SOLD (on '+(serialMatch.saledate||'an earlier date')+'). Did you buy this exact comic back?\n\nOK = Yes, reactivate that record (clears the old sale info)\nCancel = No, this is a different scenario - add as a new separate entry');
+        if(buyback){
+          comic.id=serialMatch.id;
+          comic.purchase=comic.purchase||serialMatch.purchase;
+          if(!comic.img&&serialMatch.img)comic.img=serialMatch.img;
+          if(!comic.img2&&serialMatch.img2)comic.img2=serialMatch.img2;
+          if(!comic.img3&&serialMatch.img3)comic.img3=serialMatch.img3;
+          coll=coll.map(c=>c.id==serialMatch.id?comic:c);
+          saveColl();clearScan();goGallery();
+          toast('Welcome back! Reactivated as an owned copy - sale info cleared.');
+          return;
+        }
+        // else fall through and save as a genuinely new/separate entry
+      } else {
+        comic.id=serialMatch.id;
+        if(!comic.img&&serialMatch.img)comic.img=serialMatch.img;
+        if(!comic.img2&&serialMatch.img2)comic.img2=serialMatch.img2;
+        if(!comic.img3&&serialMatch.img3)comic.img3=serialMatch.img3;
+        coll=coll.map(c=>c.id==serialMatch.id?comic:c);
+        saveColl();clearScan();goGallery();
+        toast('Matched existing slab by serial number - updated instead of duplicating');
+        return;
+      }
     }
   }
   if(editId){coll=coll.map(c=>c.id==editId?comic:c);editId=null;toast('Updated!');}
