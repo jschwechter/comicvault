@@ -230,14 +230,17 @@ input[type=file]{display:none}
         <div class="pslot">
           <div class="pprev" id="prev1"><div class="sicon">&#128247;</div><img id="img1" alt="Front"></div>
           <button class="pbtn front" onclick="document.getElementById('fi1').click()">&#128247; Front</button>
+          <button class="pbtn" id="editBtn1" style="display:none;background:var(--bg2);color:var(--text);border:0.5px solid var(--border2);margin-top:4px" onclick="openPhotoEdit(1)">&#9986;&#65039; Edit</button>
         </div>
         <div class="pslot">
           <div class="pprev" id="prev2"><div class="sicon">&#128247;</div><img id="img2" alt="Back"></div>
           <button class="pbtn back" onclick="document.getElementById('fi2').click()">&#128247; Back</button>
+          <button class="pbtn" id="editBtn2" style="display:none;background:var(--bg2);color:var(--text);border:0.5px solid var(--border2);margin-top:4px" onclick="openPhotoEdit(2)">&#9986;&#65039; Edit</button>
         </div>
         <div class="pslot" id="slotLabel">
           <div class="pprev" id="prev3"><div class="sicon">&#127991;</div><img id="img3" alt="Label"></div>
           <button class="pbtn label" onclick="document.getElementById('fi3').click()">&#128247; Label<br><span style="font-size:9px;font-weight:400">(if in hard case)</span></button>
+          <button class="pbtn" id="editBtn3" style="display:none;background:var(--bg2);color:var(--text);border:0.5px solid var(--border2);margin-top:4px" onclick="openPhotoEdit(3)">&#9986;&#65039; Edit</button>
         </div>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px;background:var(--blue-l);border:1px solid var(--blue);border-radius:8px;padding:10px 12px;line-height:1.7">
@@ -576,7 +579,16 @@ input[type=file]{display:none}
         <div class="sc"><div class="l">Invested</div><div class="v" id="stInvest">$0</div></div>
         <div class="sc"><div class="l">Est. Value</div><div class="v" id="stVal">$0</div></div>
       </div>
-      <div class="mb"><input type="text" id="srch" placeholder="Search title, box #, artist, grader, event..." oninput="renderGallery()" style="margin:0"></div>
+      <div class="two mb" style="margin-bottom:8px">
+        <input type="text" id="srch" placeholder="Search title, box #, artist, grader, event, series..." oninput="renderGallery()" style="margin:0">
+        <select id="sortSel" onchange="renderGallery()" style="margin:0">
+          <option value="recent">Sort: Recently Added</option>
+          <option value="alpha">Sort: A-Z</option>
+          <option value="valueHigh">Sort: Value High-Low</option>
+          <option value="valueLow">Sort: Value Low-High</option>
+          <option value="grade">Sort: Grade High-Low</option>
+        </select>
+      </div>
       <div class="filters">
         <div class="chip on" onclick="setF('all',this)">All</div>
         <div class="chip" onclick="setF('raw',this)">Raw</div>
@@ -605,6 +617,9 @@ input[type=file]{display:none}
         <button class="btn red mb" onclick="saveSettings()">Save</button>
         <button class="btn teal mb" onclick="syncFromSheet()">&#128260; Pull latest from Google Sheet</button>
         <button class="btn out mb" onclick="goBoxes()">&#128230; Box Overview</button>
+        <button class="btn out mb" onclick="goTrash()">&#128465;&#65039; Recently Deleted</button>
+        <button class="btn out mb" onclick="goWantList()">&#128204; Want List</button>
+        <button class="btn out mb" onclick="generateInsuranceReport()">&#128196; Insurance Report</button>
         <button class="btn out mb" onclick="exportCSV()">&#128202; Export to CSV / Excel</button>
         <button class="btn out" onclick="goGallery()">Back to Collection</button>
       </div>
@@ -622,6 +637,33 @@ input[type=file]{display:none}
       <div id="boxList"></div>
     </div>
 
+    <!-- TRASH -->
+    <div class="screen" id="sTrash">
+      <button class="back-btn" onclick="goSettings()">&lsaquo; Settings</button>
+      <div class="card">
+        <h2>&#128465;&#65039; Recently Deleted</h2>
+        <p>Deleted comics stay here for 30 days before being permanently removed, so an accidental delete is always recoverable.</p>
+      </div>
+      <div id="trashList"></div>
+    </div>
+
+    <!-- WANT LIST -->
+    <div class="screen" id="sWantList">
+      <button class="back-btn" onclick="goSettings()">&lsaquo; Settings</button>
+      <div class="card">
+        <h2>&#128204; Want List</h2>
+        <p>Track issues you're missing to complete a run - separate from your owned collection.</p>
+        <div class="mb"><div class="lbl">Title / Series</div><input type="text" id="wl_title" placeholder="e.g. Amazing Spider-Man" spellcheck="true"></div>
+        <div class="two mb">
+          <div><div class="lbl">Issue #</div><input type="text" id="wl_issue" placeholder="300"></div>
+          <div><div class="lbl">Priority</div><select id="wl_priority"><option value="">Normal</option><option value="High">High</option><option value="Low">Low</option></select></div>
+        </div>
+        <div class="mb"><div class="lbl">Notes</div><input type="text" id="wl_notes" placeholder="e.g. Looking for Cover A, NM or better" spellcheck="true"></div>
+        <button class="btn red" onclick="addWantItem()">Add to Want List</button>
+      </div>
+      <div id="wantList"></div>
+    </div>
+
   </div>
 
   <div class="nav" id="nav" style="display:none">
@@ -634,6 +676,28 @@ input[type=file]{display:none}
     </button>
   </div>
   <div class="toast" id="toast"></div>
+
+  <!-- PHOTO EDIT - rotate and crop a captured photo before it's used -->
+  <div id="peOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:950;flex-direction:column">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;touch-action:none" id="peCanvasWrap">
+      <canvas id="peCanvas" style="max-width:100%;max-height:100%"></canvas>
+      <div id="peCropBox" style="position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,0.5);touch-action:none">
+        <div id="peHandleTL" style="position:absolute;top:-12px;left:-12px;width:28px;height:28px;background:var(--red);border-radius:50%;touch-action:none"></div>
+        <div id="peHandleBR" style="position:absolute;bottom:-12px;right:-12px;width:28px;height:28px;background:var(--red);border-radius:50%;touch-action:none"></div>
+      </div>
+    </div>
+    <div style="background:#111;padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="btn-sm" style="background:#333;color:#fff;border-color:#555" onclick="rotatePhotoEdit()">&#8635; Rotate 90&deg;</button>
+        <button class="btn-sm" style="background:#333;color:#fff;border-color:#555" onclick="autoEnhancePhoto()">&#10024; Auto Enhance</button>
+        <button class="btn-sm" style="background:#333;color:#fff;border-color:#555" onclick="resetCropBox()">Reset Crop</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn out" style="flex:1;color:#fff;border-color:#555" onclick="closePhotoEdit()">Cancel</button>
+        <button class="btn red" style="flex:1" onclick="applyPhotoEdit()">Apply</button>
+      </div>
+    </div>
+  </div>
 
   <!-- QUICK EDIT - fast field tweaks from the detail view without opening the full form -->
   <div id="qeOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:900" onclick="if(event.target===this)closeQuickEdit()">
@@ -701,6 +765,43 @@ let acT={};
 
 function ls(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+/* PHOTO STORAGE - full-size photos go in IndexedDB (much larger capacity than localStorage), keyed by comicId_slot.
+   localStorage only holds lightweight comic data plus a tiny thumbnail per comic for fast gallery rendering. */
+let idbInstance=null;
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    if(idbInstance){resolve(idbInstance);return;}
+    const req=indexedDB.open('comicvault_photos',1);
+    req.onupgradeneeded=()=>{req.result.createObjectStore('photos');};
+    req.onsuccess=()=>{idbInstance=req.result;resolve(idbInstance);};
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function idbSetPhoto(key,dataUrl){
+  try{const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put(dataUrl,key);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);});}catch(e){console.error('idbSetPhoto',e);return false;}
+}
+async function idbGetPhoto(key){
+  try{const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction('photos','readonly');const r=tx.objectStore('photos').get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);});}catch(e){console.error('idbGetPhoto',e);return null;}
+}
+async function idbDeletePhoto(key){
+  try{const db=await idbOpen();return new Promise((res)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete(key);tx.oncomplete=()=>res(true);});}catch(e){return false;}
+}
+/* Small thumbnail for gallery cards - kept inline in localStorage since it's tiny (~2-4KB vs ~80-150KB for a full photo) */
+function makeThumbnail(dataUrl,maxD){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>h&&w>maxD){h=h*(maxD/w);w=maxD;}else if(h>maxD){w=w*(maxD/h);h=maxD;}
+      const c=document.createElement('canvas');c.width=Math.round(w);c.height=Math.round(h);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      res(c.toDataURL('image/jpeg',0.55));
+    };
+    img.onerror=()=>res(null);
+    img.src=dataUrl;
+  });
+}
 function getKey(){return ls('cv_key')||'';}
 function saveKey(k){lsSet('cv_key',k);}
 function saveColl(){lsSet('cv_coll',JSON.stringify(coll));}
@@ -1008,6 +1109,7 @@ async function gotFile(e,slot){
     const icon=document.getElementById('prev'+slot).querySelector('.sicon');
     const img=document.getElementById('img'+slot);
     if(icon)icon.style.display='none';if(img){img.src=compressed;img.style.display='block';}
+    const editBtn=document.getElementById('editBtn'+slot);if(editBtn)editBtn.style.display='block';
     toast('Photo '+(slot===1?'front':slot===2?'back':'label')+' captured!');
     // Auto-detect slabbed if a label photo was taken - helper doesn't need to know what "slabbed" means
     if(slot===3&&curType!=='slabbed'){setType('slabbed');}
@@ -1027,6 +1129,158 @@ async function compressImg(file,maxD,q){
     };img.src=url;
   });
 }
+
+/* PHOTO EDIT - rotate 90deg and crop a captured photo before saving it into a slot */
+let peSlot=null,peRotation=0,peImg=null,peDrag=null;
+
+function openPhotoEdit(slot){
+  if(!imgs[slot])return;
+  peSlot=slot;peRotation=0;
+  peImg=new Image();
+  peImg.onload=()=>{
+    drawPhotoEditCanvas();
+    resetCropBox();
+    document.getElementById('peOverlay').style.display='flex';
+  };
+  peImg.src=imgs[slot];
+}
+
+function drawPhotoEditCanvas(){
+  const canvas=document.getElementById('peCanvas');
+  const ctx=canvas.getContext('2d');
+  const rotated=(peRotation%180!==0);
+  const w=peImg.width,h=peImg.height;
+  canvas.width=rotated?h:w;
+  canvas.height=rotated?w:h;
+  ctx.save();
+  ctx.translate(canvas.width/2,canvas.height/2);
+  ctx.rotate(peRotation*Math.PI/180);
+  ctx.drawImage(peImg,-w/2,-h/2,w,h);
+  ctx.restore();
+}
+
+function rotatePhotoEdit(){
+  peRotation=(peRotation+90)%360;
+  drawPhotoEditCanvas();
+  resetCropBox();
+}
+
+/* Auto Enhance: white balance correction + contrast stretch, to fix dim/yellow-cast photos and make text easier to read for both humans and the AI */
+function autoEnhancePhoto(){
+  const canvas=document.getElementById('peCanvas');
+  const ctx=canvas.getContext('2d');
+  const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d=imgData.data;
+  const n=d.length/4;
+
+  // Step 1: gray-world white balance - average each channel, then scale so all three averages match the overall gray average
+  let sumR=0,sumG=0,sumB=0;
+  for(let i=0;i<d.length;i+=4){sumR+=d[i];sumG+=d[i+1];sumB+=d[i+2];}
+  const avgR=sumR/n,avgG=sumG/n,avgB=sumB/n;
+  const avgGray=(avgR+avgG+avgB)/3;
+  const scaleR=avgGray/(avgR||1),scaleG=avgGray/(avgG||1),scaleB=avgGray/(avgB||1);
+
+  // Step 2: find 1st/99th percentile per channel (post white-balance) for a robust contrast stretch, ignoring outlier pixels
+  const histR=new Array(256).fill(0),histG=new Array(256).fill(0),histB=new Array(256).fill(0);
+  for(let i=0;i<d.length;i+=4){
+    histR[Math.min(255,Math.round(d[i]*scaleR))]++;
+    histG[Math.min(255,Math.round(d[i+1]*scaleG))]++;
+    histB[Math.min(255,Math.round(d[i+2]*scaleB))]++;
+  }
+  function percentileBounds(hist,total){
+    const lowCut=total*0.01,highCut=total*0.99;
+    let cum=0,lo=0,hi=255;
+    for(let v=0;v<256;v++){cum+=hist[v];if(cum>=lowCut){lo=v;break;}}
+    cum=0;
+    for(let v=255;v>=0;v--){cum+=hist[v];if(cum>=(total-highCut)){hi=v;break;}}
+    if(hi<=lo)hi=lo+1;
+    return[lo,hi];
+  }
+  const[loR,hiR]=percentileBounds(histR,n);
+  const[loG,hiG]=percentileBounds(histG,n);
+  const[loB,hiB]=percentileBounds(histB,n);
+
+  for(let i=0;i<d.length;i+=4){
+    let r=d[i]*scaleR,g=d[i+1]*scaleG,b=d[i+2]*scaleB;
+    r=Math.max(0,Math.min(255,(r-loR)*255/(hiR-loR)));
+    g=Math.max(0,Math.min(255,(g-loG)*255/(hiG-loG)));
+    b=Math.max(0,Math.min(255,(b-loB)*255/(hiB-loB)));
+    d[i]=r;d[i+1]=g;d[i+2]=b;
+  }
+  ctx.putImageData(imgData,0,0);
+  toast('Auto enhance applied');
+}
+
+function resetCropBox(){
+  const canvas=document.getElementById('peCanvas');
+  const wrap=document.getElementById('peCanvasWrap');
+  // Position crop box to match the canvas's displayed (CSS-scaled) bounds, full extent by default
+  requestAnimationFrame(()=>{
+    const canvasRect=canvas.getBoundingClientRect();
+    const wrapRect=wrap.getBoundingClientRect();
+    const box=document.getElementById('peCropBox');
+    box.style.left=(canvasRect.left-wrapRect.left)+'px';
+    box.style.top=(canvasRect.top-wrapRect.top)+'px';
+    box.style.width=canvasRect.width+'px';
+    box.style.height=canvasRect.height+'px';
+    box.dataset.canvasLeft=canvasRect.left-wrapRect.left;
+    box.dataset.canvasTop=canvasRect.top-wrapRect.top;
+    box.dataset.canvasW=canvasRect.width;
+    box.dataset.canvasH=canvasRect.height;
+  });
+}
+
+function initCropDrag(){
+  const tl=document.getElementById('peHandleTL');
+  const br=document.getElementById('peHandleBR');
+  const box=document.getElementById('peCropBox');
+  const wrap=document.getElementById('peCanvasWrap');
+  function start(handle){return(e)=>{e.preventDefault();peDrag=handle;};}
+  function move(e){
+    if(!peDrag)return;
+    const touch=e.touches?e.touches[0]:e;
+    const wrapRect=wrap.getBoundingClientRect();
+    const x=touch.clientX-wrapRect.left,y=touch.clientY-wrapRect.top;
+    const curLeft=parseFloat(box.style.left),curTop=parseFloat(box.style.top);
+    const curW=parseFloat(box.style.width),curH=parseFloat(box.style.height);
+    if(peDrag==='tl'){
+      const newW=curLeft+curW-x,newH=curTop+curH-y;
+      if(newW>30&&newH>30){box.style.left=x+'px';box.style.top=y+'px';box.style.width=newW+'px';box.style.height=newH+'px';}
+    }else if(peDrag==='br'){
+      const newW=x-curLeft,newH=y-curTop;
+      if(newW>30&&newH>30){box.style.width=newW+'px';box.style.height=newH+'px';}
+    }
+  }
+  function end(){peDrag=null;}
+  tl.onmousedown=start('tl');br.onmousedown=start('br');
+  tl.ontouchstart=start('tl');br.ontouchstart=start('br');
+  document.addEventListener('mousemove',move);document.addEventListener('touchmove',move,{passive:false});
+  document.addEventListener('mouseup',end);document.addEventListener('touchend',end);
+}
+initCropDrag();
+
+function applyPhotoEdit(){
+  const canvas=document.getElementById('peCanvas');
+  const box=document.getElementById('peCropBox');
+  const canvasLeft=parseFloat(box.dataset.canvasLeft),canvasTop=parseFloat(box.dataset.canvasTop);
+  const canvasDispW=parseFloat(box.dataset.canvasW),canvasDispH=parseFloat(box.dataset.canvasH);
+  const scaleX=canvas.width/canvasDispW,scaleY=canvas.height/canvasDispH;
+  const boxLeft=parseFloat(box.style.left),boxTop=parseFloat(box.style.top);
+  const boxW=parseFloat(box.style.width),boxH=parseFloat(box.style.height);
+  const cropX=(boxLeft-canvasLeft)*scaleX,cropY=(boxTop-canvasTop)*scaleY;
+  const cropW=boxW*scaleX,cropH=boxH*scaleY;
+  const outCanvas=document.createElement('canvas');
+  outCanvas.width=Math.round(cropW);outCanvas.height=Math.round(cropH);
+  outCanvas.getContext('2d').drawImage(canvas,cropX,cropY,cropW,cropH,0,0,outCanvas.width,outCanvas.height);
+  const result=outCanvas.toDataURL('image/jpeg',0.8);
+  imgs[peSlot]=result;
+  const img=document.getElementById('img'+peSlot);
+  if(img)img.src=result;
+  closePhotoEdit();
+  toast('Photo updated!');
+}
+
+function closePhotoEdit(){document.getElementById('peOverlay').style.display='none';peSlot=null;peImg=null;}
 
 async function analyzeComic(){
   const key=getKey();
@@ -1307,7 +1561,13 @@ function renderGallery(){
   else if(curFilter==='cgc')data=data.filter(c=>c.gradeco==='CGC');
   else if(curFilter==='cbcs')data=data.filter(c=>c.gradeco==='CBCS');
   else if(curFilter==='research')data=data.filter(c=>c.researchFlags&&c.researchFlags.length>0);
-  if(q)data=data.filter(c=>[c.title,c.issue,c.publisher,c.key,c.artists,c.writers,c.chars,c.variant,c.varletter,c.signedby,c.gradeco,c.event,c.rawbox,c.signbox,c.slabbox].join(' ').toLowerCase().includes(q));
+  if(q)data=data.filter(c=>[c.title,c.issue,c.publisher,c.key,c.artists,c.writers,c.chars,c.variant,c.varletter,c.signedby,c.gradeco,c.event,c.rawbox,c.signbox,c.slabbox,c.compseries,c.seriesMembers].join(' ').toLowerCase().includes(q));
+  const sortMode=document.getElementById('sortSel')?.value||'recent';
+  if(sortMode==='alpha')data.sort((a,b)=>a.title.localeCompare(b.title)||String(a.issue).localeCompare(String(b.issue),undefined,{numeric:true}));
+  else if(sortMode==='valueHigh')data.sort((a,b)=>(b.marketval||0)-(a.marketval||0));
+  else if(sortMode==='valueLow')data.sort((a,b)=>(a.marketval||0)-(b.marketval||0));
+  else if(sortMode==='grade')data.sort((a,b)=>(parseFloat(b.grade)||0)-(parseFloat(a.grade)||0));
+  // 'recent' = leave in existing order (newest-first, since new saves are unshifted to the front)
   const grid=document.getElementById('galGrid');const empty=document.getElementById('galEmpty');
   if(!data.length){grid.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
@@ -1319,7 +1579,7 @@ function renderGallery(){
     const hasR=c.researchFlags&&c.researchFlags.length>0;
     return `<div class="cc${hasR?' nr':''}" onclick="showDetail('${c.id}')">
       <div class="ct">
-        ${c.img?`<img src="${c.img}" loading="lazy" alt="">`:'<div class="ti">📚</div>'}
+        ${c.imgThumb?`<img src="${c.imgThumb}" loading="lazy" alt="">`:'<div class="ti">📚</div>'}
         ${c.type==='raw'&&!c.signed&&c.qty>1?`<div class="qb">x${c.qty}</div>`:''}
         ${c.limited&&ltd?`<div class="lb">${ltd}</div>`:''}
         ${box?`<div class="bb">${esc(box)}</div>`:''}
@@ -1402,7 +1662,7 @@ function showDetail(id){
       <ul style="margin:6px 0 0 18px;padding:0">${breakdownLines.map(l=>`<li>${l}</li>`).join('')}</ul>
     </div>`:grandTotal===1?`<div style="background:var(--red-l);border:1px solid var(--red);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--red-d)"><strong>&#9888;&#65039; This is your only copy</strong> of ${esc(c.title)} #${esc(c.issue)} &mdash; think twice before selling.</div>`:''}
     <div class="dh">
-      ${c.img?`<img src="${c.img}" class="dt" alt="">`:'<div class="dtp">📚</div>'}
+      ${c.imgThumb?`<img src="${c.imgThumb}" class="dt" alt="">`:'<div class="dtp">📚</div>'}
       <div style="flex:1;min-width:0">
         <div style="font-size:18px;font-weight:700;line-height:1.2;margin-bottom:4px">${esc(c.title)}</div>
         <div style="font-size:14px;color:var(--muted);margin-bottom:8px">#${esc(String(c.issue||'').replace(/^#+/,''))}${c.volume?' &middot; Vol. '+esc(String(c.volume).replace(/^vol\.?\s*/i,'')):''}${c.varletter?' &middot; Cover '+esc(c.varletter):''}</div>
@@ -1418,7 +1678,7 @@ function showDetail(id){
         ${c.variant?`<div style="font-size:12px;color:var(--muted)">Variant: ${esc(c.variant)}</div>`:''}
       </div>
     </div>
-    ${(c.img2||c.img3)?`<div style="display:flex;gap:8px;margin-bottom:12px">${c.img2?`<img src="${c.img2}" style="height:80px;border-radius:6px;object-fit:cover" alt="Back">`:''}${c.img3?`<img src="${c.img3}" style="height:80px;border-radius:6px;object-fit:cover" alt="Label">`:''}</div>`:''}
+    <div id="detailBackLabelRow" style="display:flex;gap:8px;margin-bottom:12px"></div>
     ${hasR?`<div class="rd on"><h3>Needs Research</h3>${c.researchFlags.map(f=>`<div class="rq"><div class="rq-q">? ${esc(f.q)}</div></div>`).join('')}</div>`:''}
     <div class="dtbl">
       <div class="dth">Comic details</div>
@@ -1471,10 +1731,18 @@ function showDetail(id){
   // Auto-check market value: first time, or if stale (>30 days since last check)
   const daysSince=c.marketChecked?(Date.now()-new Date(c.marketChecked).getTime())/86400000:Infinity;
   if(daysSince>180){setTimeout(()=>checkMarketValue(id),300);}
+  // Load back/label photos from IndexedDB (not stored inline - see storage notes)
+  if(c.hasImg)loadDetailPhotos(id);
+}
+async function loadDetailPhotos(id){
+  const[img2,img3]=await Promise.all([idbGetPhoto(id+'_2'),idbGetPhoto(id+'_3')]);
+  const row=document.getElementById('detailBackLabelRow');
+  if(!row)return; // user navigated away before this finished loading
+  row.innerHTML=(img2?`<img src="${img2}" style="height:80px;border-radius:6px;object-fit:cover" alt="Back">`:'')+(img3?`<img src="${img3}" style="height:80px;border-radius:6px;object-fit:cover" alt="Label">`:'');
 }
 function dr(label,val,color=''){if(!val&&val!==0)return'';return`<div class="dr"><span class="dl">${label}</span><span class="dv"${color?` style="color:${color}"`:''}}>${val}</span></div>`;}
 
-function editComic(id){
+async function editComic(id){
   const c=coll.find(x=>x.id==id);if(!c)return;
   clearScan();
   editId=id;
@@ -1482,9 +1750,12 @@ function editComic(id){
   document.getElementById('sScan').classList.add('on');
   document.getElementById('nbScan').classList.add('on');document.getElementById('nbGal').classList.remove('on');
   setType(c.type);
-  if(c.img){imgs[1]=c.img;setPrev(1,c.img);}
-  if(c.img2){imgs[2]=c.img2;setPrev(2,c.img2);}
-  if(c.img3){imgs[3]=c.img3;setPrev(3,c.img3);}
+  if(c.hasImg){
+    const[i1,i2,i3]=await Promise.all([idbGetPhoto(id+'_1'),idbGetPhoto(id+'_2'),idbGetPhoto(id+'_3')]);
+    if(i1){imgs[1]=i1;setPrev(1,i1);}
+    if(i2){imgs[2]=i2;setPrev(2,i2);}
+    if(i3){imgs[3]=i3;setPrev(3,i3);}
+  }
   const s=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!==undefined)el.value=String(v);};
   s('f_title',c.title);s('f_issue',c.issue);s('f_volume',c.volume);s('f_publisher',c.publisher);
   s('f_date',c.date);s('f_coverprice',c.coverprice);s('f_varletter',c.varletter);s('f_variant',c.variant);
@@ -1522,8 +1793,135 @@ function editComic(id){
   document.getElementById('aiBox').style.display='none';
   document.getElementById('content').scrollTo(0,0);
 }
-function setPrev(n,src){const icon=document.getElementById('prev'+n).querySelector('.sicon');const img=document.getElementById('img'+n);if(icon)icon.style.display='none';if(img){img.src=src;img.style.display='block';}}
-function delComic(id){if(!confirm('Delete this comic?'))return;coll=coll.filter(c=>c.id!=id);saveColl();toast('Deleted');goGallery();}
+function setPrev(n,src){const icon=document.getElementById('prev'+n).querySelector('.sicon');const img=document.getElementById('img'+n);if(icon)icon.style.display='none';if(img){img.src=src;img.style.display='block';}const editBtn=document.getElementById('editBtn'+n);if(editBtn)editBtn.style.display='block';}
+/* TRASH - deleted comics are kept for 30 days before being permanently purged, so an accidental delete is recoverable */
+function getTrash(){try{return JSON.parse(ls('cv_trash')||'[]');}catch(e){return[];}}
+function setTrash(arr){lsSet('cv_trash',JSON.stringify(arr));}
+function purgeOldTrash(){
+  const trash=getTrash();
+  const cutoff=Date.now()-30*86400000;
+  const keep=[],purge=[];
+  trash.forEach(t=>{(new Date(t.deletedAt).getTime()<cutoff?purge:keep).push(t);});
+  if(purge.length){
+    purge.forEach(t=>{idbDeletePhoto(t.comic.id+'_1');idbDeletePhoto(t.comic.id+'_2');idbDeletePhoto(t.comic.id+'_3');});
+    setTrash(keep);
+  }
+}
+async function delComic(id){
+  if(!confirm('Delete this comic? It can be restored from Settings > Recently Deleted for 30 days.'))return;
+  const comic=coll.find(c=>c.id==id);if(!comic)return;
+  coll=coll.filter(c=>c.id!=id);saveColl();
+  const trash=getTrash();trash.unshift({comic,deletedAt:new Date().toISOString()});setTrash(trash);
+  toast('Deleted - recoverable for 30 days in Settings');goGallery();
+}
+function restoreFromTrash(idx){
+  const trash=getTrash();
+  const item=trash[idx];if(!item)return;
+  coll.unshift(item.comic);saveColl();
+  trash.splice(idx,1);setTrash(trash);
+  toast('Restored!');renderTrash();
+}
+function permanentlyDeleteTrashItem(idx){
+  const trash=getTrash();
+  const item=trash[idx];if(!item)return;
+  if(!confirm('Permanently delete this comic? This cannot be undone.'))return;
+  idbDeletePhoto(item.comic.id+'_1');idbDeletePhoto(item.comic.id+'_2');idbDeletePhoto(item.comic.id+'_3');
+  trash.splice(idx,1);setTrash(trash);
+  renderTrash();
+}
+function goTrash(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('sTrash').classList.add('on');renderTrash();}
+function renderTrash(){
+  const trash=getTrash();
+  const el=document.getElementById('trashList');
+  if(!trash.length){el.innerHTML='<div class="empty"><div style="font-size:40px;margin-bottom:10px">&#128465;&#65039;</div><div style="font-weight:600">Trash is empty</div></div>';return;}
+  el.innerHTML=trash.map((t,i)=>{
+    const daysLeft=30-Math.floor((Date.now()-new Date(t.deletedAt).getTime())/86400000);
+    return `<div class="card" style="padding:12px">
+      <div style="font-weight:600">${esc(t.comic.title)} #${esc(t.comic.issue)}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Deleted ${new Date(t.deletedAt).toLocaleDateString()} &middot; ${daysLeft} day${daysLeft===1?'':'s'} left before permanent removal</div>
+      <div class="btn-row">
+        <button class="btn-sm" style="background:var(--teal-l);border-color:var(--teal);color:#0F5038" onclick="restoreFromTrash(${i})">Restore</button>
+        <button class="btn-sm" style="background:var(--red-l);color:var(--red-d);border-color:var(--red)" onclick="permanentlyDeleteTrashItem(${i})">Delete Forever</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* WANT LIST - issues you're missing, tracked separately from your owned collection */
+function getWantList(){try{return JSON.parse(ls('cv_wantlist')||'[]');}catch(e){return[];}}
+function setWantList(arr){lsSet('cv_wantlist',JSON.stringify(arr));}
+function goWantList(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('sWantList').classList.add('on');renderWantList();}
+function addWantItem(){
+  const title=document.getElementById('wl_title').value.trim();
+  if(!title){toast('Please enter a title');return;}
+  const item={title,issue:document.getElementById('wl_issue').value.trim(),priority:document.getElementById('wl_priority').value,notes:document.getElementById('wl_notes').value.trim(),added:new Date().toISOString().split('T')[0]};
+  const list=getWantList();list.unshift(item);setWantList(list);
+  ['wl_title','wl_issue','wl_notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('wl_priority').value='';
+  toast('Added to want list');renderWantList();
+}
+function removeWantItem(idx){const list=getWantList();list.splice(idx,1);setWantList(list);renderWantList();}
+function renderWantList(){
+  const list=getWantList();
+  const el=document.getElementById('wantList');
+  if(!list.length){el.innerHTML='<div class="empty"><div style="font-size:40px;margin-bottom:10px">&#128204;</div><div style="font-weight:600">Nothing on your want list yet</div></div>';return;}
+  const prioColor={High:'var(--red)',Low:'var(--muted)','':'var(--gold)'};
+  el.innerHTML=list.map((w,i)=>`<div class="card" style="padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-weight:600">${esc(w.title)}${w.issue?' #'+esc(w.issue):''}</div>
+        ${w.notes?`<div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(w.notes)}</div>`:''}
+      </div>
+      ${w.priority?`<span class="badge" style="background:${prioColor[w.priority]};color:#fff">${w.priority}</span>`:''}
+    </div>
+    <button class="btn-sm" style="margin-top:8px;background:var(--red-l);color:var(--red-d);border-color:var(--red)" onclick="removeWantItem(${i})">Remove</button>
+  </div>`).join('');
+}
+
+/* INSURANCE REPORT - printable summary of the collection's total value and breakdown, for insurance documentation */
+function generateInsuranceReport(){
+  if(!coll.length){toast('No comics to report on yet');return;}
+  const totalCopies=coll.reduce((s,c)=>s+(c.qty||1),0);
+  const totalDeclared=coll.reduce((s,c)=>s+(parseFloat(c.declaredval)||0),0);
+  const totalMarket=coll.reduce((s,c)=>s+(c.marketval||0),0);
+  const totalPurchase=coll.reduce((s,c)=>s+(c.purchase||0),0);
+  const byPublisher={};
+  coll.forEach(c=>{const p=c.publisher||'Unknown';if(!byPublisher[p])byPublisher[p]={count:0,value:0};byPublisher[p].count+=(c.qty||1);byPublisher[p].value+=(c.marketval||parseFloat(c.declaredval)||0);});
+  const topValue=[...coll].sort((a,b)=>(b.marketval||parseFloat(b.declaredval)||0)-(a.marketval||parseFloat(a.declaredval)||0)).slice(0,20);
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>ComicVault Insurance Report</title><style>
+    body{font-family:-apple-system,sans-serif;padding:30px;max-width:800px;margin:0 auto;color:#111}
+    h1{font-size:22px;border-bottom:2px solid #E24B4A;padding-bottom:10px}
+    h2{font-size:15px;margin-top:24px;color:#555;text-transform:uppercase;letter-spacing:.5px}
+    table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+    th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #ddd}
+    th{background:#f5f5f3}
+    .summary{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin:16px 0}
+    .box{border:1px solid #ddd;border-radius:8px;padding:12px}
+    .box .l{font-size:11px;color:#888;text-transform:uppercase}
+    .box .v{font-size:20px;font-weight:700}
+    @media print{body{padding:10px}}
+  </style></head><body>
+    <h1>ComicVault Collection Report</h1>
+    <p style="color:#888;font-size:12px">Generated ${new Date().toLocaleDateString()}</p>
+    <div class="summary">
+      <div class="box"><div class="l">Total Copies</div><div class="v">${totalCopies}</div></div>
+      <div class="box"><div class="l">Unique Issues</div><div class="v">${new Set(coll.map(c=>c.title+'#'+c.issue)).size}</div></div>
+      <div class="box"><div class="l">Total Purchase Cost</div><div class="v">$${Math.round(totalPurchase).toLocaleString()}</div></div>
+      <div class="box"><div class="l">Est. Total Value</div><div class="v">$${Math.round(totalMarket||totalDeclared).toLocaleString()}</div></div>
+    </div>
+    <h2>By Publisher</h2>
+    <table><tr><th>Publisher</th><th>Copies</th><th>Est. Value</th></tr>
+    ${Object.entries(byPublisher).sort((a,b)=>b[1].value-a[1].value).map(([p,d])=>`<tr><td>${esc(p)}</td><td>${d.count}</td><td>$${Math.round(d.value).toLocaleString()}</td></tr>`).join('')}
+    </table>
+    <h2>Top 20 Most Valuable Items</h2>
+    <table><tr><th>Title</th><th>Issue</th><th>Type</th><th>Grade</th><th>Est. Value</th></tr>
+    ${topValue.map(c=>`<tr><td>${esc(c.title)}</td><td>${esc(c.issue)}${c.varletter?' Cvr '+esc(c.varletter):''}</td><td>${c.type==='slabbed'?'Slabbed':c.type==='signed'?'Signed':'Raw'}</td><td>${esc(c.grade||c.condition||'')}</td><td>$${Math.round(c.marketval||parseFloat(c.declaredval)||0).toLocaleString()}</td></tr>`).join('')}
+    </table>
+    <p style="margin-top:24px;color:#888;font-size:11px">Values are estimates based on market lookups and declared values entered by the collector. This report is for insurance documentation purposes and is not an appraisal.</p>
+  </body></html>`);
+  w.document.close();
+}
 
 /* QUICK EDIT - lets you fix common small fields (grade, serial, box, prices, notes) right from the phone without opening the full scan form */
 let qeId=null;
@@ -1653,11 +2051,11 @@ function saveComic(){
   }
   doSave();
 }
-async function doMerge(){const dup=coll.find(c=>c.id===pendingDupId);if(!dup){doCancel();return;}dup.qty=(dup.qty||1)+(parseInt(gv('f_qty'))||1);if(imgs[1]&&!dup.img)dup.img=imgs[1];saveColl();toast(dup.title+' #'+dup.issue+' now x'+dup.qty);doCancel();clearScan();goGallery();}
+async function doMerge(){const dup=coll.find(c=>c.id===pendingDupId);if(!dup){doCancel();return;}dup.qty=(dup.qty||1)+(parseInt(gv('f_qty'))||1);if(imgs[1]&&!dup.hasImg){const t=await makeThumbnail(imgs[1],120);if(t)dup.imgThumb=t;dup.hasImg=true;await savePhotosToIDB(dup.id);}saveColl();toast(dup.title+' #'+dup.issue+' now x'+dup.qty);doCancel();clearScan();goGallery();}
 function doKeep(){doCancel();doSave();}
 function doCancel(){pendingDupId=null;document.getElementById('dupBox').classList.remove('on');document.getElementById('scanForm').style.opacity='1';}
 
-function doSave(){
+async function doSave(){
   const isSlab=curType==='slabbed';
   const manSigned=document.getElementById('manSig')?.checked||false;
   const isSigned=curType==='signed'||manSigned;
@@ -1668,8 +2066,11 @@ function doSave(){
   const cond=curType==='signed'?gv('f_scond'):gv('f_cond');
   const sigtype=gv('f_sigtype');
   const hasSketch=document.getElementById('f_hasSketch')?.checked||false;
+  // Thumbnail for gallery cards - full photos go to IndexedDB below, not into the localStorage-saved object
+  let imgThumb=editId?(coll.find(c=>c.id==editId)?.imgThumb||''):'';
+  if(imgs[1]){const t=await makeThumbnail(imgs[1],120);if(t)imgThumb=t;}
   const comic={
-    id,img:imgs[1],img2:imgs[2],img3:imgs[3],
+    id,imgThumb,hasImg:!!(imgs[1]||imgs[2]||imgs[3])||(editId?!!coll.find(c=>c.id==editId)?.hasImg:false),
     title:gv('f_title')||'Unknown',issue:gv('f_issue').replace(/^#+\s*/,''),volume:gv('f_volume').replace(/^vol\.?\s*/i,''),
     publisher:gv('f_publisher'),date:gv('f_date'),coverprice:gv('f_coverprice'),
     varletter:gv('f_varletter'),variant:gv('f_variant'),covertype:gv('f_covertype')||'Standard',
@@ -1707,9 +2108,8 @@ function doSave(){
         if(buyback){
           comic.id=serialMatch.id;
           comic.purchase=comic.purchase||serialMatch.purchase;
-          if(!comic.img&&serialMatch.img)comic.img=serialMatch.img;
-          if(!comic.img2&&serialMatch.img2)comic.img2=serialMatch.img2;
-          if(!comic.img3&&serialMatch.img3)comic.img3=serialMatch.img3;
+          if(!comic.imgThumb&&serialMatch.imgThumb)comic.imgThumb=serialMatch.imgThumb;
+          await savePhotosToIDB(comic.id);
           coll=coll.map(c=>c.id==serialMatch.id?comic:c);
           saveColl();clearScan();goGallery();
           toast('Welcome back! Reactivated as an owned copy - sale info cleared.');
@@ -1718,9 +2118,8 @@ function doSave(){
         // else fall through and save as a genuinely new/separate entry
       } else {
         comic.id=serialMatch.id;
-        if(!comic.img&&serialMatch.img)comic.img=serialMatch.img;
-        if(!comic.img2&&serialMatch.img2)comic.img2=serialMatch.img2;
-        if(!comic.img3&&serialMatch.img3)comic.img3=serialMatch.img3;
+        if(!comic.imgThumb&&serialMatch.imgThumb)comic.imgThumb=serialMatch.imgThumb;
+        await savePhotosToIDB(comic.id);
         coll=coll.map(c=>c.id==serialMatch.id?comic:c);
         saveColl();clearScan();goGallery();
         toast('Matched existing slab by serial number - updated instead of duplicating');
@@ -1728,6 +2127,7 @@ function doSave(){
       }
     }
   }
+  await savePhotosToIDB(comic.id);
   if(editId){coll=coll.map(c=>c.id==editId?comic:c);editId=null;toast('Updated!');}
   else{
     coll.unshift(comic);
@@ -1736,6 +2136,15 @@ function doSave(){
     syncToSheet(comic);
   }
   saveColl();clearScan();goGallery();
+}
+
+/* Write whichever photo slots have new content into IndexedDB under this comic's id - slots left untouched (null) keep whatever was there before */
+async function savePhotosToIDB(id){
+  const jobs=[];
+  if(imgs[1])jobs.push(idbSetPhoto(id+'_1',imgs[1]));
+  if(imgs[2])jobs.push(idbSetPhoto(id+'_2',imgs[2]));
+  if(imgs[3])jobs.push(idbSetPhoto(id+'_3',imgs[3]));
+  if(jobs.length)await Promise.all(jobs);
 }
 
 async function syncToSheet(comic){
@@ -1800,6 +2209,7 @@ function clearScan(){
     const icon=document.getElementById('prev'+n).querySelector('.sicon');
     const img=document.getElementById('img'+n);
     if(icon)icon.style.display='block';if(img){img.style.display='none';img.src='';}
+    const editBtn=document.getElementById('editBtn'+n);if(editBtn)editBtn.style.display='none';
   });
   document.getElementById('scanForm').classList.remove('on');document.getElementById('scanForm').style.opacity='1';
   document.getElementById('scanSpin').classList.remove('on');document.getElementById('dupBox').classList.remove('on');
@@ -1822,6 +2232,7 @@ function init(){
   try{coll=JSON.parse(ls('cv_coll')||'[]');}catch(e){coll=[];}
   helperMode=ls('cv_helperMode')==='1';applyMode();
   setType('raw');onGrader();
+  purgeOldTrash();
   const key=getKey();
   if(key){
     document.getElementById('nav').style.display='flex';
