@@ -1019,8 +1019,10 @@ async function lookupPrintRun(){
     if(!jsonMatch)throw new Error('Could not parse result');
     const result=JSON.parse(jsonMatch[0]);
     if(!result.printrun){toast('Could not confidently find a print run for this exact release');return;}
-    document.getElementById('f_printrun').value=result.printrun;
-    toast('Print run found: '+result.printrun+(result.source?' (from '+result.source+')':''));
+    const cleanNum=String(result.printrun).replace(/[^0-9]/g,'');
+    if(!cleanNum){toast('Found a result but could not extract a clean number: "'+result.printrun+'"');return;}
+    document.getElementById('f_printrun').value=cleanNum;
+    toast('Print run found: '+cleanNum+(result.source?' (from '+result.source+')':''));
   }catch(err){
     toast('Lookup failed: '+err.message);
   }
@@ -1046,10 +1048,11 @@ async function lookupPrintRunForComic(id){
     if(!jsonMatch)throw new Error('Could not parse result');
     const result=JSON.parse(jsonMatch[0]);
     if(!result.printrun){toast('Could not confidently find a print run for this exact release');return;}
-    c.printrun=result.printrun;
+    const cleanNum=String(result.printrun).replace(/[^0-9]/g,'')||result.printrun;
+    c.printrun=cleanNum;
     c.researchFlags=genFlags(c);
     saveColl();
-    toast('Print run found: '+result.printrun+(result.source?' (from '+result.source+')':''));
+    toast('Print run found: '+cleanNum+(result.source?' (from '+result.source+')':''));
     showDetail(id);
   }catch(err){
     toast('Lookup failed: '+err.message);
@@ -2026,6 +2029,9 @@ function showDetail(id){
   // Auto-check market value: first time, or if stale (>30 days since last check)
   const daysSince=c.marketChecked?(Date.now()-new Date(c.marketChecked).getTime())/86400000:Infinity;
   if(daysSince>180){setTimeout(()=>checkMarketValue(id),300);}
+  // Auto-check CGC certification (pulls census data + fills missing credits): first time, or if stale (>180 days)
+  const daysSinceCensus=c.censusChecked?(Date.now()-new Date(c.censusChecked).getTime())/86400000:Infinity;
+  if(c.type==='slabbed'&&c.gradeco==='CGC'&&c.serial&&c.serial.trim()&&daysSinceCensus>180){setTimeout(()=>verifyWithCGC(id,true),600);}
   // Load back/label photos from IndexedDB (not stored inline - see storage notes)
   if(c.hasImg)loadDetailPhotos(id);
 }
@@ -2309,11 +2315,11 @@ function saveQuickEdit(){
 function ebay(title,issue,grader,grade){const q=encodeURIComponent([title,issue,grader,grade,'comic'].filter(Boolean).join(' '));window.open('https://www.ebay.com/sch/i.html?_nkw='+q+'&_sacat=259104&LH_Sold=1&LH_Complete=1','_blank');}
 
 /* CGC CERTIFICATION VERIFICATION - cross-check what we have on file against CGC's own public cert lookup, using the serial number as the authoritative key */
-async function verifyWithCGC(id){
+async function verifyWithCGC(id,silent){
   const key=getKey();
-  if(!key){toast('Add your Claude API key in Settings');return;}
+  if(!key){if(!silent)toast('Add your Claude API key in Settings');return;}
   const c=coll.find(x=>x.id==id);if(!c)return;
-  toast('Looking up CGC certification '+c.serial+'...');
+  if(!silent)toast('Looking up CGC certification '+c.serial+'...');
   try{
     const prompt=`Fetch this exact URL and read the CGC certification record it shows: https://www.cgccomics.com/certlookup/${c.serial.trim()}/ - Find the officially recorded details for this certification number: title, issue, publisher, grade, label type, page quality, signer name if signed, and the creative team credits (writer/artist) if listed. Also find the CGC Census data for this exact book/issue/variant: how many copies are recorded at this exact grade, and how many copies are recorded at a HIGHER grade than this one (census data is usually on a separate "Census" tab or section for the same book). Return ONLY valid JSON: {"found":true,"title":"","issue":"","publisher":"","grade":"","label":"","pageQuality":"","signedBy":"or empty if not signed","writers":["name"],"artists":["name"],"censusAtGrade":0,"censusHigher":0,"censusTotal":0,"url":"https://www.cgccomics.com/certlookup/${c.serial.trim()}/"} - if that page shows no result or an error for this cert number, return {"found":false}. Leave census fields as null if you cannot find census data, don't guess.`;
     const r=await fetch(WORKER,{
@@ -2358,7 +2364,18 @@ async function verifyWithCGC(id){
 
     if(!mismatches.length){
       saveColl();
-      toast('Verified! All '+matches.length+' checked fields match.'+(filledCredits?' Filled in creative credits.':'')+censusNote);
+      if(!silent){toast('Verified! All '+matches.length+' checked fields match.'+(filledCredits?' Filled in creative credits.':'')+censusNote);}
+      showDetail(id);
+      return;
+    }
+
+    if(silent){
+      // Automatic background check - don't interrupt with a popup, just file the mismatches as research flags for later review
+      mismatches.forEach(f=>{
+        c.researchFlags=c.researchFlags||[];
+        c.researchFlags.push({q:'CGC official record differs on '+f.label+': yours says "'+(f.ours||'blank')+'", CGC says "'+f.cgc+'" - please verify'});
+      });
+      saveColl();
       showDetail(id);
       return;
     }
