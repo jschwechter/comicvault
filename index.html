@@ -303,8 +303,8 @@ input[type=file]{display:none}
         </div>
         <div class="storage-box">
           <div class="storage-hdr">&#128230; Storage location <span style="font-weight:400;text-transform:none">&mdash; which box is this going in?</span></div>
-          <div id="stRaw"><div class="lbl" id="rawBoxLbl">Raw/Signed box # <span style="font-weight:400;text-transform:none;color:var(--hint)">(unslabbed comics, signed or not, usually store together)</span></div><input type="text" id="f_rawbox" placeholder="e.g. Box 12"></div>
-          <div id="stSlab" style="display:none"><div class="lbl">Slab box #</div><input type="text" id="f_slabbox" placeholder="e.g. Slab Box 5"></div>
+          <div id="stRaw"><div class="lbl" id="rawBoxLbl">Raw/Signed box # <span style="font-weight:400;text-transform:none;color:var(--hint)">(unslabbed comics, signed or not, usually store together)</span></div><input type="text" id="f_rawbox" placeholder="e.g. Box 12" list="rawBoxSuggestions"><datalist id="rawBoxSuggestions"></datalist></div>
+          <div id="stSlab" style="display:none"><div class="lbl">Slab box #</div><input type="text" id="f_slabbox" placeholder="e.g. Slab Box 5" list="slabBoxSuggestions"><datalist id="slabBoxSuggestions"></datalist></div>
         </div>
         <div class="owner-only">
         <span class="sec">Copy type</span>
@@ -864,7 +864,20 @@ function showMsg(el,type,text){
   el.textContent=text;
 }
 
-function goScan(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sScan').classList.add('on');document.getElementById('nbScan').classList.add('on');}
+function goScan(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sScan').classList.add('on');document.getElementById('nbScan').classList.add('on');populateBoxSuggestions();}
+
+/* Populate box number datalists from every box name already used, so previously-used boxes show up as tap-to-select suggestions instead of retyping */
+function populateBoxSuggestions(){
+  const rawBoxes=new Set(),slabBoxes=new Set();
+  coll.forEach(c=>{
+    if(c.type!=='slabbed'&&c.rawbox&&c.rawbox.trim())rawBoxes.add(c.rawbox.trim());
+    if(c.type==='slabbed'&&c.slabbox&&c.slabbox.trim())slabBoxes.add(c.slabbox.trim());
+  });
+  const rawList=document.getElementById('rawBoxSuggestions');
+  const slabList=document.getElementById('slabBoxSuggestions');
+  if(rawList)rawList.innerHTML=[...rawBoxes].sort().map(b=>`<option value="${esc(b)}">`).join('');
+  if(slabList)slabList.innerHTML=[...slabBoxes].sort().map(b=>`<option value="${esc(b)}">`).join('');
+}
 function goGallery(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sGallery').classList.add('on');document.getElementById('nbGal').classList.add('on');renderGallery();updateStats();renderResearchPanel();}
 function goSettings(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('sSettings').classList.add('on');document.getElementById('setKey').value=getKey();}
 
