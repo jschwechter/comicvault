@@ -1997,7 +1997,7 @@ function showDetail(id){
       ${dr('Page quality',c.pages)}${dr('Serial / Cert #',c.serial)}
       ${c.restoregrade?dr('Restoration grade',c.restoregrade):''}
       ${dr('Grader notes',c.gradernotes)}
-      ${c.censusAtGrade!=null?dr('CGC Census',c.censusAtGrade+' at this grade, '+(c.censusHigher||0)+' graded higher'+(c.censusTotal?' ('+c.censusTotal+' total census)':'')):(c.censusChecked?dr('CGC Census','Not found - '+(c.censusNote||'try "Check Census" again or view on CGC directly')):'')}
+      ${c.censusAtGrade!=null?dr('CGC Census',c.censusAtGrade+' at this grade'+((c.censusHigher||0)>0?', '+c.censusHigher+' graded higher':' &mdash; yours is the top known grade, none graded higher')+(c.censusTotal?' ('+c.censusTotal+' total census)':'')):(c.censusChecked?dr('CGC Census','Not found - '+(c.censusNote||'try "Check Census" again or view on CGC directly')):(c.gradeco==='CGC'&&c.serial&&c.serial.trim()?'<div class="dr" id="censusLoadingRow"><span class="dl">CGC Census</span><span class="dv" style="color:var(--muted);font-style:italic">Checking automatically...</span></div>':''))}
       ${c.censusChecked?dr('Census checked',c.censusChecked):''}
     </div>`:''}
     ${isSigned?`<div class="dtbl"><div class="dth">Signature</div>
@@ -2378,7 +2378,14 @@ async function verifyWithCGC(id,silent){
     const jsonMatch=textBlock.match(/\{[\s\S]*\}/);
     if(!jsonMatch)throw new Error('Could not parse CGC lookup result');
     const cgc=JSON.parse(jsonMatch[0]);
-    if(!cgc.found){toast('Could not find this cert number on CGC\'s public lookup - it may not be publicly searchable');return;}
+    if(!cgc.found){
+      c.censusChecked=new Date().toISOString().split('T')[0];
+      c.censusNote='Cert number not found in CGC\'s public lookup';
+      saveColl();
+      if(!silent)toast('Could not find this cert number on CGC\'s public lookup - it may not be publicly searchable');
+      showDetail(id);
+      return;
+    }
 
     // Store census data regardless of other matches - this is new informational data, not something to confirm
     if(cgc.censusAtGrade!=null||cgc.censusHigher!=null){
@@ -2448,7 +2455,15 @@ async function verifyWithCGC(id,silent){
     }
   }catch(err){
     console.error(err);
-    toast('CGC lookup failed: '+err.message);
+    if(silent){
+      // Don't retry endlessly on a genuine error - mark as checked (will retry again after 180 days) and stay quiet
+      c.censusChecked=new Date().toISOString().split('T')[0];
+      c.censusNote='Check failed: '+err.message;
+      saveColl();
+      showDetail(id);
+    }else{
+      toast('CGC lookup failed: '+err.message);
+    }
   }
 }
 
