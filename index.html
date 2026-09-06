@@ -1844,6 +1844,7 @@ function showDetail(id){
     ${c.researchNotes?`<div class="dtbl"><div class="dth">Research notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.researchNotes)}</div></div>`:''}
     ${c.consignment?`<div class="dtbl"><div class="dth">&#128230; Consignment</div>${dr('Shop',c.consignShop)}${dr('Date sent',c.consignDate)}${dr('Terms',c.consignTerms)}${dr('Notes',c.consignNotes)}</div>`:''}
     <div class="btn-row">
+      <button class="btn-sm" onclick="copyAllDetails('${c.id}')" style="background:var(--gold-l);border-color:var(--gold);color:var(--gold-d)">&#128203; Copy All Details</button>
       <button class="btn-sm" onclick="openQuickEdit('${c.id}')" style="background:var(--teal-l);border-color:var(--teal);color:#0F5038">&#9889; Quick Edit</button>
       <button class="btn-sm" onclick="editComic('${c.id}')">Full Edit</button>
       <button class="btn-sm" onclick="ebay('${esc(c.title)}','${esc(c.issue)}','${esc(c.gradeco||'')}','${esc(c.grade||'')}')">eBay Sold</button>
@@ -1862,6 +1863,46 @@ async function loadDetailPhotos(id){
   row.innerHTML=(img2?`<img src="${img2}" style="height:80px;border-radius:6px;object-fit:cover" alt="Back">`:'')+(img3?`<img src="${img3}" style="height:80px;border-radius:6px;object-fit:cover" alt="Label">`:'');
 }
 function dr(label,val,color=''){if(!val&&val!==0)return'';return`<div class="dr"><span class="dl">${label}</span><span class="dv"${color?` style="color:${color}"`:''}}>${val}</span></div>`;}
+
+/* Copy every field on a comic as plain text - one tap instead of scrolling and screenshotting the whole detail page */
+function copyAllDetails(id){
+  const c=coll.find(x=>x.id==id);if(!c)return;
+  const lines=[];
+  const add=(label,val)=>{if(val!=null&&val!==''&&val!==false)lines.push(label+': '+val);};
+  add('Title',c.title);add('Issue',c.issue);add('Volume',c.volume);add('Publisher',c.publisher);
+  add('Cover Date',c.date);add('Cover Price',c.coverprice);add('Variant Letter',c.varletter);add('Variant',c.variant);
+  add('Cover Type',c.covertype);add('Back Cover Code',c.backcode);add('Content Rating',c.rating);
+  add('Compilation Series',c.compseries);add('Other in Series',c.seriesMembers);
+  add('Cover Artist(s)',c.artists);add('Writer(s)',c.writers);add('Key Issue',c.key);add('Characters',c.chars);add('Story Arc',c.arc);
+  add('Type',c.type==='slabbed'?'Slabbed':c.type==='signed'?'Signed':'Raw');
+  add('Signed',c.signed?'Yes':'No');add('Signature Type',c.sigtype);add('Signed By',c.signedby);add('Authentication',c.auth);
+  add('Inscription',c.inscription);add('Has Sketch',c.hasSketch?'Yes':'');add('Sketch Description',c.sketchDesc);
+  add('Quantity',c.qty);add('Condition',c.condition);
+  add('Raw/Signed Box',c.rawbox);add('Slab Box',c.slabbox);
+  add('Grading Company',c.gradeco);add('Label',c.label);add('Grade',c.grade);add('Page Quality',c.pages);
+  add('Serial/Cert #',c.serial);add('Restoration Grade',c.restoregrade);add('Grader Notes',c.gradernotes);
+  add('CGC Census At Grade',c.censusAtGrade);add('CGC Census Higher',c.censusHigher);add('CGC Census Total',c.censusTotal);
+  add('Limited Edition',c.limited?'Yes':'');add('Print Run',c.printrun);add('Copy #',c.copynum);add('Numbering',c.numtype);
+  add('Set Position',c.setpos);add('Total in Set',c.settotal);add('Companion Covers',c.companions);
+  add('Edition Type',c.edtype);add('Event/Source',c.event);add('Edition Notes',c.editionnotes);add('Info Source',c.infoSrc);
+  add('Purchase Price',c.purchase);add('Purchase Date',c.purchasedate);add('Source',c.source);
+  add('Declared Value',c.declaredval);add('Market Value',c.marketval);add('Market Note',c.marketNote);
+  add('Sale Price',c.sale);add('Sale Date',c.saledate);
+  add('Consignment',c.consignment?'Yes':'');add('Consignment Shop',c.consignShop);add('Consignment Date',c.consignDate);add('Consignment Terms',c.consignTerms);
+  add('Notes',c.notes);
+  if(c.researchFlags&&c.researchFlags.length)add('Research Flags',c.researchFlags.map(f=>f.q).join(' | '));
+  add('Added',c.added);
+  const text=lines.join('\n');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast('Copied! Paste it into chat.')).catch(()=>fallbackCopyPrompt(text));
+  }else{
+    fallbackCopyPrompt(text);
+  }
+}
+function fallbackCopyPrompt(text){
+  // If clipboard API isn't available, show the text in a native prompt box the person can select-all and copy manually
+  window.prompt('Select all and copy this text:',text);
+}
 
 async function editComic(id){
   const c=coll.find(x=>x.id==id);if(!c)return;
