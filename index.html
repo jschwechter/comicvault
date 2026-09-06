@@ -303,8 +303,8 @@ input[type=file]{display:none}
         </div>
         <div class="storage-box">
           <div class="storage-hdr">&#128230; Storage location <span style="font-weight:400;text-transform:none">&mdash; which box is this going in?</span></div>
-          <div id="stRaw"><div class="lbl" id="rawBoxLbl">Raw/Signed box # <span style="font-weight:400;text-transform:none;color:var(--hint)">(unslabbed comics, signed or not, usually store together)</span></div><input type="text" id="f_rawbox" placeholder="e.g. Box 12" list="rawBoxSuggestions"><datalist id="rawBoxSuggestions"></datalist></div>
-          <div id="stSlab" style="display:none"><div class="lbl">Slab box #</div><input type="text" id="f_slabbox" placeholder="e.g. Slab Box 5" list="slabBoxSuggestions"><datalist id="slabBoxSuggestions"></datalist></div>
+          <div id="stRaw" class="ac-wrap" style="margin-bottom:10px"><div class="lbl" id="rawBoxLbl">Raw/Signed box # <span style="font-weight:400;text-transform:none;color:var(--hint)">(unslabbed comics, signed or not, usually store together)</span></div><input type="text" id="f_rawbox" placeholder="e.g. Box 12" autocomplete="off" oninput="onRawBoxInput()" onfocus="onRawBoxInput()" onblur="hideAC('rawBoxAC')" style="margin:0"><div class="ac-dd" id="rawBoxAC"></div></div>
+          <div id="stSlab" class="ac-wrap" style="display:none;margin-bottom:10px"><div class="lbl">Slab box #</div><input type="text" id="f_slabbox" placeholder="e.g. Slab Box 5" autocomplete="off" oninput="onSlabBoxInput()" onfocus="onSlabBoxInput()" onblur="hideAC('slabBoxAC')" style="margin:0"><div class="ac-dd" id="slabBoxAC"></div></div>
         </div>
         <div class="owner-only">
         <span class="sec">Copy type</span>
@@ -429,7 +429,10 @@ input[type=file]{display:none}
           <div class="two mb">
             <div>
               <div class="lbl">Print Run (total made)</div>
-              <input type="number" id="f_printrun" placeholder="e.g. 250">
+              <div style="display:flex;gap:6px">
+                <input type="number" id="f_printrun" placeholder="e.g. 250" style="margin:0">
+                <button class="btn-sm" style="flex-shrink:0;background:var(--gold-l);border-color:var(--gold);color:var(--gold-d)" onclick="lookupPrintRun()">&#128269;</button>
+              </div>
             </div>
             <div>
               <div class="lbl">Numbering type</div>
@@ -866,19 +869,28 @@ function showMsg(el,type,text){
   el.textContent=text;
 }
 
-function goScan(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sScan').classList.add('on');document.getElementById('nbScan').classList.add('on');populateBoxSuggestions();}
+function goScan(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sScan').classList.add('on');document.getElementById('nbScan').classList.add('on');}
 
-/* Populate box number datalists from every box name already used, so previously-used boxes show up as tap-to-select suggestions instead of retyping */
-function populateBoxSuggestions(){
-  const rawBoxes=new Set(),slabBoxes=new Set();
+/* Box number autocomplete - custom dropdown (native <datalist> does not show suggestions on iOS Safari, so this is built the same way as the Title/Publisher/Artist autocomplete) */
+function getUsedBoxes(bucketType){
+  const boxes=new Set();
   coll.forEach(c=>{
-    if(c.type!=='slabbed'&&c.rawbox&&c.rawbox.trim())rawBoxes.add(c.rawbox.trim());
-    if(c.type==='slabbed'&&c.slabbox&&c.slabbox.trim())slabBoxes.add(c.slabbox.trim());
+    if(bucketType==='raw'&&c.type!=='slabbed'&&c.rawbox&&c.rawbox.trim())boxes.add(c.rawbox.trim());
+    if(bucketType==='slab'&&c.type==='slabbed'&&c.slabbox&&c.slabbox.trim())boxes.add(c.slabbox.trim());
   });
-  const rawList=document.getElementById('rawBoxSuggestions');
-  const slabList=document.getElementById('slabBoxSuggestions');
-  if(rawList)rawList.innerHTML=[...rawBoxes].sort().map(b=>`<option value="${esc(b)}">`).join('');
-  if(slabList)slabList.innerHTML=[...slabBoxes].sort().map(b=>`<option value="${esc(b)}">`).join('');
+  return [...boxes].sort();
+}
+function onRawBoxInput(){
+  const val=document.getElementById('f_rawbox').value.trim().toLowerCase();
+  const all=getUsedBoxes('raw');
+  const matches=val?all.filter(b=>b.toLowerCase().includes(val)):all;
+  showACList('rawBoxAC',matches.map(b=>({value:b,label:b})));
+}
+function onSlabBoxInput(){
+  const val=document.getElementById('f_slabbox').value.trim().toLowerCase();
+  const all=getUsedBoxes('slab');
+  const matches=val?all.filter(b=>b.toLowerCase().includes(val)):all;
+  showACList('slabBoxAC',matches.map(b=>({value:b,label:b})));
 }
 function goGallery(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('sGallery').classList.add('on');document.getElementById('nbGal').classList.add('on');renderGallery();updateStats();renderResearchPanel();}
 function goSettings(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('sSettings').classList.add('on');document.getElementById('setKey').value=getKey();}
@@ -958,7 +970,7 @@ function showACList(id,items){
 }
 
 function selAC(acId,value,fillJson){
-  const map={titleAC:'f_title',publisherAC:'f_publisher',artistAC:'f_art',writerAC:'f_wri',charAC:'f_char'};
+  const map={titleAC:'f_title',publisherAC:'f_publisher',artistAC:'f_art',writerAC:'f_wri',charAC:'f_char',rawBoxAC:'f_rawbox',slabBoxAC:'f_slabbox'};
   const inp=document.getElementById(map[acId]);if(inp)inp.value=value;
   const ac=document.getElementById(acId);if(ac)ac.classList.remove('show');
   if(fillJson){try{applyFill(JSON.parse(fillJson));}catch(e){}}
@@ -986,7 +998,63 @@ async function callClaude(prompt){
   return d.content[0].text.replace(/```json|```/g,'').trim();
 }
 
-/* TEMPORARY VERIFICATION CLOSEUP - a quick single-purpose photo used once to double-check a specific hard-to-read field (serial or back cover code). The photo itself is never saved to imgs[] or IndexedDB - only the extracted text is kept. */
+/* On-demand print run lookup - a manual trigger for when the automatic verification pass didn't catch it, usable anytime during scanning or later while editing */
+async function lookupPrintRun(){
+  const key=getKey();
+  if(!key){toast('Add your Claude API key in Settings');return;}
+  const title=gv('f_title'),issue=gv('f_issue');
+  if(!title){toast('Enter a title first');return;}
+  toast('Searching for print run...');
+  try{
+    const desc=[title,issue?'#'+issue:'',gv('f_varletter')?'Cover '+gv('f_varletter'):'',gv('f_variant'),gv('f_publisher')].filter(Boolean).join(' ');
+    const r=await fetch(WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-opus-4-5',max_tokens:500,messages:[{role:'user',content:`Search for the exact print run (total number of copies made) for this specific comic: ${desc}. This is often documented on the publisher's site, in solicitation info, on the cover/back itself, or on collector databases. Return ONLY valid JSON: {"printrun":"number as string or empty if not confidently found","source":"where you found it or empty"}`}],tools:[{type:'web_search_20250305',name:'web_search'}]})
+    });
+    const data=await r.json();
+    if(data.error)throw new Error(data.error.message);
+    const textBlock=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    const jsonMatch=textBlock.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)throw new Error('Could not parse result');
+    const result=JSON.parse(jsonMatch[0]);
+    if(!result.printrun){toast('Could not confidently find a print run for this exact release');return;}
+    document.getElementById('f_printrun').value=result.printrun;
+    toast('Print run found: '+result.printrun+(result.source?' (from '+result.source+')':''));
+  }catch(err){
+    toast('Lookup failed: '+err.message);
+  }
+}
+
+/* Same lookup, but for a comic already saved (called from the detail view rather than mid-scan) */
+async function lookupPrintRunForComic(id){
+  const key=getKey();
+  if(!key){toast('Add your Claude API key in Settings');return;}
+  const c=coll.find(x=>x.id==id);if(!c)return;
+  toast('Searching for print run...');
+  try{
+    const desc=[c.title,c.issue?'#'+c.issue:'',c.varletter?'Cover '+c.varletter:'',c.variant,c.publisher].filter(Boolean).join(' ');
+    const r=await fetch(WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-opus-4-5',max_tokens:500,messages:[{role:'user',content:`Search for the exact print run (total number of copies made) for this specific comic: ${desc}. This is often documented on the publisher's site, in solicitation info, on the cover/back itself, or on collector databases. Return ONLY valid JSON: {"printrun":"number as string or empty if not confidently found","source":"where you found it or empty"}`}],tools:[{type:'web_search_20250305',name:'web_search'}]})
+    });
+    const data=await r.json();
+    if(data.error)throw new Error(data.error.message);
+    const textBlock=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    const jsonMatch=textBlock.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)throw new Error('Could not parse result');
+    const result=JSON.parse(jsonMatch[0]);
+    if(!result.printrun){toast('Could not confidently find a print run for this exact release');return;}
+    c.printrun=result.printrun;
+    c.researchFlags=genFlags(c);
+    saveColl();
+    toast('Print run found: '+result.printrun+(result.source?' (from '+result.source+')':''));
+    showDetail(id);
+  }catch(err){
+    toast('Lookup failed: '+err.message);
+  }
+}/* TEMPORARY VERIFICATION CLOSEUP - a quick single-purpose photo used once to double-check a specific hard-to-read field (serial or back cover code). The photo itself is never saved to imgs[] or IndexedDB - only the extracted text is kept. */
 async function verifyCloseup(e,mode){
   const key=getKey();
   if(!key){toast('Add your Claude API key in Settings');return;}
@@ -1935,6 +2003,7 @@ function showDetail(id){
     <button class="btn-sm" id="mvBtn" onclick="checkMarketValue('${c.id}',${c.marketChecked?'true':'false'})" style="margin-bottom:12px;background:var(--teal-l);border-color:var(--teal);color:#0F5038">&#128269; ${c.marketChecked?'Refresh':'Check'} Market Value</button>
     ${(c.type==='slabbed'&&c.gradeco==='CGC'&&c.serial&&c.serial.trim())?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--blue-l);border-color:var(--blue);color:#0C447C" onclick="verifyWithCGC('${c.id}')">&#128737;&#65039; Verify via CGC Lookup</button><a href="https://www.cgccomics.com/certlookup/${esc(c.serial.trim())}/" target="_blank" rel="noopener" class="btn-sm" style="margin-bottom:12px;margin-left:8px;display:inline-block;text-decoration:none;background:var(--bg2);border:0.5px solid var(--border2);color:var(--text)">&#128279; Open CGC Page</a>`:''}
     <button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--gold-l);border-color:var(--gold);color:var(--gold-d)" onclick="findBetterCoverPhoto('${c.id}')">&#127760; ${c.imgExternalUrl?'Change':'Find'} Better Cover Photo</button>
+    ${(c.limited&&!c.printrun)?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--gold-l);border-color:var(--gold);color:var(--gold-d)" onclick="lookupPrintRunForComic('${c.id}')">&#128269; Look Up Print Run</button>`:''}
     ${c.imgExternalUrl?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px" onclick="removeCoverPhoto('${c.id}')">Use my scanned photo instead</button>`:''}
     ${c.notes?`<div class="dtbl"><div class="dth">Notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.notes)}</div></div>`:''}
     ${c.researchNotes?`<div class="dtbl"><div class="dth">Research notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.researchNotes)}</div></div>`:''}
