@@ -465,6 +465,7 @@ input[type=file]{display:none}
               <option value="Diamond">Diamond Retailer</option>
               <option value="Artist Proof">Artist Proof (AP)</option>
               <option value="Publisher Direct">Publisher Direct</option>
+              <option value="Anniversary/Collector Edition">Anniversary / VIP Collector Edition</option>
               <option value="Other">Other</option>
             </select>
           </div>
@@ -789,7 +790,8 @@ const LABELS={
 };
 
 let coll=[],curType='raw',imgs={1:null,2:null,3:null},origImgs={1:null,2:null,3:null},curFilter='all',editId=null,pendingDupId=null;
-let lastAIConfidence=null,lastLowConfFields='';
+let pendingExternalCoverUrl=null,frontPhotoIsBlurry=false;
+let lastAIConfidence=null,lastLowConfFields='',lastFieldConflicts=null;
 let helperMode=false;
 
 function toggleMode(){
@@ -992,7 +994,7 @@ async function verifyCloseup(e,mode){
   const file=files[0];if(!file)return;
   toast('Reading close-up photo...');
   try{
-    const compressed=await compressImg(file,600,0.8);
+    const compressed=await compressImg(file,1400,0.9);
     const b=compressed.split(',')[1],mt=compressed.split(';')[0].split(':')[1];
     const isSerial=mode==='serial';
     const promptText=isSerial
@@ -1197,7 +1199,7 @@ async function gotFile(e,slot){
   try{
     const files=e.target.files;if(!files||!files.length)return;
     const file=files[0];if(!file)return;
-    const compressed=await compressImg(file,500,0.75);
+    const compressed=await compressImg(file,1400,0.88);
     imgs[slot]=compressed;
     origImgs[slot]=compressed; // remember the fresh unedited capture so an edit can be undone later
     const icon=document.getElementById('prev'+slot).querySelector('.sicon');
@@ -1209,6 +1211,10 @@ async function gotFile(e,slot){
     toast('Photo '+(slot===1?'front':slot===2?'back':'label')+' captured!');
     // Auto-detect slabbed if a label photo was taken - helper doesn't need to know what "slabbed" means
     if(slot===3&&curType!=='slabbed'){setType('slabbed');}
+    if(slot===1){
+      pendingExternalCoverUrl=null;
+      computeBlurScore(compressed).then(score=>{frontPhotoIsBlurry=score<BLUR_SCORE_THRESHOLD;});
+    }
     if(imgs[1])analyzeComic();
   }catch(err){toast('Photo error: '+err.message);}
 }
@@ -1249,7 +1255,35 @@ async function compressImg(file,maxD,q){
   });
 }
 
-/* PHOTO EDIT - rotate 90deg and crop a captured photo before saving it into a slot */
+/* Lightweight blur detection - measures edge sharpness on a small grayscale version of the photo. Low score = blurry, likely worth finding a clearer replacement online. */
+function computeBlurScore(dataUrl){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      const w=120,h=Math.round(120*(img.height/img.width))||160;
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);
+      const data=ctx.getImageData(0,0,w,h).data;
+      // Grayscale
+      const gray=new Float32Array(w*h);
+      for(let i=0;i<w*h;i++){const o=i*4;gray[i]=0.299*data[o]+0.587*data[o+1]+0.114*data[o+2];}
+      // Sum of squared horizontal+vertical gradients as an edge-energy proxy - sharp images have strong edges, blurry ones don't
+      let sumSq=0,n=0;
+      for(let y=1;y<h-1;y++){
+        for(let x=1;x<w-1;x++){
+          const i=y*w+x;
+          const gx=gray[i+1]-gray[i-1];
+          const gy=gray[i+w]-gray[i-w];
+          sumSq+=gx*gx+gy*gy;n++;
+        }
+      }
+      res(n?sumSq/n:0);
+    };
+    img.onerror=()=>res(9999); // if it fails to load for scoring, don't flag it as blurry - avoid false positives
+    img.src=dataUrl;
+  });
+}
+const BLUR_SCORE_THRESHOLD=90; // heuristic cutoff - lower scores indicate a soft/blurry photo/* PHOTO EDIT - rotate 90deg and crop a captured photo before saving it into a slot */
 let peSlot=null,peRotation=0,peImg=null,peDrag=null;
 
 function openPhotoEdit(slot){
@@ -1391,7 +1425,7 @@ function applyPhotoEdit(){
   const outCanvas=document.createElement('canvas');
   outCanvas.width=Math.round(cropW);outCanvas.height=Math.round(cropH);
   outCanvas.getContext('2d').drawImage(canvas,cropX,cropY,cropW,cropH,0,0,outCanvas.width,outCanvas.height);
-  const result=outCanvas.toDataURL('image/jpeg',0.8);
+  const result=outCanvas.toDataURL('image/jpeg',0.92);
   imgs[peSlot]=result;
   const img=document.getElementById('img'+peSlot);
   if(img)img.src=result;
@@ -1437,12 +1471,13 @@ RULES:
 - Some back cover codes or nearby text include an actual print run number or individual copy number embedded alongside the title/issue/variant portion (e.g. a code followed by "/250" or a separate "LTD 250" nearby) - if you see numbers that look like a print run or copy number near the back cover code, extract those into printrun/copynum as well, don't just capture the letter-code portion.
 - ALSO scan the back cover for any printed edition/print-run text such as "Limited to X", "Exclusive", convention names, or similar - this is often printed near the corner or bottom of variant/exclusive covers separately from the alphanumeric code. Capture any print run number you find into printrun even if it's only on the back cover, not the front.
 - The exact location of the variant identification text on the back cover VARIES by title and printing - it is not always in the same spot. Sometimes it's a small colored text block in a corner (e.g. black text on a red background), sometimes it's plain text positioned just above the UPC/barcode, sometimes elsewhere entirely. Do not assume one fixed location - systematically scan the ENTIRE back cover image, paying particular attention to: any area near the UPC/barcode (just above, below, or beside it), all four corners, and any small text blocks that stand out from the main art/ad content. This small text is often the actual authoritative variant identifier (letter, "Cover X", or code) and should take priority over any letter guessed from the front cover art alone.
+- The FRONT cover itself often has small printed text too, especially in corners - things like the artist's name, the release date, an edition name (e.g. "Anniversary Edition", "VIP Collectible Cover", a convention/event name), or a print run number. Scan all corners and edges of the front cover image carefully for this kind of small text, not just the main title/logo area. If you find edition-related text on the front cover, use it to fill edtype, event, editionnotes, artists, and date - never leave these blank just because you only checked the label or back cover and missed text that was actually on the front.
 - Content rating: LEAVE THIS FIELD BLANK in this initial pass almost always - it will be cross-checked against documented publisher release info in a follow-up verification step, so do not guess it visually here. Many publishers (Zenescope and other small-press/indie publishers especially, but not exclusively) routinely draw characters in shorts, cut-off shirts, swimwear, and form-fitting costumes as standard house art style, which is NOT a rating tier regardless of publisher. Leave rating empty unless you have specific documented knowledge (not visual impression) that this exact cover is part of a known multi-tier release.
 - Compilation series: many publishers (Zenescope, Marvel, DC, and others) run parody/themed variant series where cover art parodies a real-world product/brand (e.g. a character dressed as a cereal-box mascot with a parody brand name like "Camelot Crisp"), or homage series (classic album covers, movie posters, iconic comic covers reimagined). These are typically part of a named annual or themed series across multiple issues. If the cover shows this kind of parody/homage theming from ANY publisher, identify and name the series pattern (e.g. "[Year] Cereal Box Parody Series") even if you don't know the exact official series name. For other covers, only name a compilation series if you recognize it, otherwise leave empty.
 - Volume field: leave blank if only one volume of this series has ever been published - do not guess "1".
 
 Return ONLY valid JSON:
-{"title":"","issue":"","publisher":"","date":"month year","volume":"","coverprice":"","varletter":"single letter or empty","variant":"","covertype":"Standard|Cosplay|Virgin|Foil|Blank Sketch|Original Art|Metal|Connecting|Wraparound|Other","backcode":"exact code from back cover or empty","rating":"PG|Risque|Nude|Line Art|empty","compseries":"series name or empty","artists":["name1"],"writers":["name1"],"key":"","chars":["name1"],"arc":"","wraparound":false,"backHasInfo":false,"limited":false,"printrun":"","copynum":"","setpos":"","settotal":"","edtype":"","event":"","editionnotes":"","signed":false,"sigtype":"witnessed|unwitnessed|edition-wide|facsimile|empty","signedby":"","hasSketch":false,"sketchDesc":"","inscription":"","isSlabbed":false,"grader":"CGC|CBCS|PGX|PSA|empty","label":"Universal|Signature Series|CGC x JSA|Qualified|Restored|Pedigree|Conserved|SS Qualified|SS Restored|Custom|NG|CVR|Standard|Verified Sig|Witnessed Sig|Gold Label|empty","grade":"","pageQuality":"White|Off-White/White|Off-White|Cream/Off-White|Cream|Light Tan|Tan|Brittle|empty","serial":"","restoregrade":"","gradernotes":"any defect/qualifier notes or comments printed on the label, or empty","confidence":85,"lowConfidenceFields":"","sigConfidence":"certain|uncertain|empty","labelSigCheck":"witnessed|verified|not-specified|empty - what the label literally says about signature type, only fill if a label image was provided"}`});
+{"title":"","issue":"","publisher":"","date":"month year","volume":"","coverprice":"","varletter":"single letter or empty","variant":"","covertype":"Standard|Cosplay|Virgin|Foil|Blank Sketch|Original Art|Metal|Connecting|Wraparound|Other","backcode":"exact code from back cover or empty","rating":"PG|Risque|Nude|Line Art|empty","compseries":"series name or empty","artists":["name1"],"writers":["name1"],"key":"","chars":["name1"],"arc":"","wraparound":false,"backHasInfo":false,"limited":false,"printrun":"","copynum":"","setpos":"","settotal":"","edtype":"Convention Exclusive|Livestream Exclusive|Store Exclusive|Retailer Exclusive|Staff Exclusive|NCW Exclusive|Kickstarter|Subscription|Diamond|Artist Proof|Publisher Direct|Anniversary/Collector Edition|Other|empty - pick the CLOSEST category if the exact wording does not match one exactly, never leave this blank if ANY edition-type text is printed on the cover/label, put unmatched exact wording in editionnotes","event":"","editionnotes":"","signed":false,"sigtype":"witnessed|unwitnessed|edition-wide|facsimile|empty","signedby":"","hasSketch":false,"sketchDesc":"","inscription":"","isSlabbed":false,"grader":"CGC|CBCS|PGX|PSA|empty","label":"Universal|Signature Series|CGC x JSA|Qualified|Restored|Pedigree|Conserved|SS Qualified|SS Restored|Custom|NG|CVR|Standard|Verified Sig|Witnessed Sig|Gold Label|empty","grade":"","pageQuality":"White|Off-White/White|Off-White|Cream/Off-White|Cream|Light Tan|Tan|Brittle|empty","serial":"","restoregrade":"","gradernotes":"any defect/qualifier notes or comments printed on the label, or empty","confidence":85,"lowConfidenceFields":"","sigConfidence":"certain|uncertain|empty","labelSigCheck":"witnessed|verified|not-specified|empty - what the label literally says about signature type, only fill if a label image was provided"}`});
 
   try{
     setPill('busy','Analyzing...');
@@ -1458,7 +1493,13 @@ Return ONLY valid JSON:
       document.getElementById('spinMsg').textContent='Verifying and filling gaps...';
       document.getElementById('spinSub').textContent='Cross-checking print runs, creator credits, edition details...';
       try{
-        const vp=`For "${result.title}" #${result.issue}${result.varletter?' Cover '+result.varletter:''}${result.grader?' ('+result.grader+' '+result.grade+')':''}, verify and fill these empty fields using your knowledge: printrun=${result.printrun||'?'}, edtype=${result.edtype||'?'}, event=${result.event||'?'}, artists=${JSON.stringify(result.artists)}, writers=${JSON.stringify(result.writers)}, pageQuality=${result.pageQuality||'?'}, serial=${result.serial||'?'}. The variant letter is already confirmed as "${result.varletter||'unknown'}" - do NOT mention or imply a different variant letter anywhere in your response, including in additionalNotes. If you believe the variant letter is wrong, put that specific concern in varConflict instead.
+        const vp=`For "${result.title}" #${result.issue}${result.varletter?' Cover '+result.varletter:''}${result.grader?' ('+result.grader+' '+result.grade+')':''}, do two things using your knowledge and web search:
+
+1) VERIFY what was read from the photos against reliable sources. Cross-check: title (is this the correct/exact series name?), issue number, publisher, cover date, and key issue significance (if one was noted, is it actually correct for this issue - e.g. is this really the first appearance claimed?). If you find a clear, confident discrepancy between what was read and what reliable sources say, list it in "fieldConflicts" as {"field":"title|issue|publisher|date|key","photoSaid":"","sourcesSay":"","confidence":"high|medium"}. Only flag genuine discrepancies you're confident about - do not flag minor formatting differences (e.g. "Vol 2" vs "Volume 2" is not a conflict).
+
+2) FILL these empty fields using your knowledge: printrun=${result.printrun||'?'}, edtype=${result.edtype||'?'}, event=${result.event||'?'}, artists=${JSON.stringify(result.artists)}, writers=${JSON.stringify(result.writers)}, pageQuality=${result.pageQuality||'?'}, serial=${result.serial||'?'}.
+
+The variant letter is already confirmed as "${result.varletter||'unknown'}" - do NOT mention or imply a different variant letter anywhere in your response, including in additionalNotes or fieldConflicts. If you believe the variant letter is wrong, put that specific concern in varConflict instead.
 
 IMPORTANT - print run priority: now that the exact title, issue, and cover letter are confirmed above, this is specific enough that limited edition print run numbers ARE usually documented and findable for known variant releases from any publisher, especially small-press/direct-market publishers who commonly publish exact print run counts for their exclusives. Actually search for this specific combination rather than giving up quickly - print run should not stay empty just because it wasn't visible in the photo, if it's genuinely findable online for this specific release.
 
@@ -1468,7 +1509,7 @@ Also: if you specifically know that this exact title/issue/cover letter combinat
 
 Also: if this cover is part of a broader named/branded compilation series (a themed campaign spanning multiple issues, conventions, or cities - e.g. a "Postcard Exclusive" series released at different conventions, or a parody-product themed series), name the series in "compseries" if you can identify it, and separately list any OTHER specific entries in that same series that you know of (e.g. other city/convention names, other covers) in "seriesMembers" as a short comma-separated list - only include ones you actually know exist, leave empty if you don't have confident specific knowledge.
 
-Return ONLY valid JSON: {"printrun":"","edtype":"","event":"","artists":[],"writers":[],"pageQuality":"","serial":"","additionalNotes":"","varConflict":"only fill if you have strong reason to believe the variant letter is wrong, else empty","rating":"PG|Risque|Nude|Line Art|empty - only if documented, else empty","compseries":"series name or empty","seriesMembers":"comma-separated other known entries in this series or empty"}`;
+Return ONLY valid JSON: {"printrun":"","edtype":"","event":"","artists":[],"writers":[],"pageQuality":"","serial":"","additionalNotes":"","varConflict":"only fill if you have strong reason to believe the variant letter is wrong, else empty","rating":"PG|Risque|Nude|Line Art|empty - only if documented, else empty","compseries":"series name or empty","seriesMembers":"comma-separated other known entries in this series or empty","fieldConflicts":[]}`;
         const vr=await callClaude(vp);
         const verified=JSON.parse(vr);
         if(!result.printrun&&verified.printrun)result.printrun=verified.printrun;
@@ -1480,6 +1521,7 @@ Return ONLY valid JSON: {"printrun":"","edtype":"","event":"","artists":[],"writ
         if(!result.serial&&verified.serial)result.serial=verified.serial;
         if(verified.additionalNotes)result._notes=verified.additionalNotes;
         if(verified.varConflict)result._varConflict=verified.varConflict;
+        if(verified.fieldConflicts&&verified.fieldConflicts.length)result._fieldConflicts=verified.fieldConflicts;
         // Documented rating from verification (cross-referenced against known publisher release info) takes priority over any visual guess
         if(verified.rating)result.rating=verified.rating;
         if(!result.compseries&&verified.compseries)result.compseries=verified.compseries;
@@ -1527,6 +1569,17 @@ function fillForm(d){
   if(d._varConflict){
     const box=document.getElementById('varConflictBox');
     if(box){box.style.display='block';box.innerHTML='Possible variant letter issue: '+esc(d._varConflict)+' Please check the cover/label directly.';}
+  }
+  if(d._fieldConflicts&&d._fieldConflicts.length){
+    lastFieldConflicts=d._fieldConflicts;
+    const box=document.getElementById('varConflictBox');
+    if(box){
+      const fieldNames={title:'Title',issue:'Issue #',publisher:'Publisher',date:'Cover Date',key:'Key Issue Significance'};
+      box.style.display='block';
+      box.innerHTML='Internet cross-check found possible issue(s):<br>'+
+        d._fieldConflicts.map(fc=>'&bull; <strong>'+(fieldNames[fc.field]||fc.field)+'</strong>: photo/label said "'+esc(fc.photoSaid||'')+'", sources say "'+esc(fc.sourcesSay||'')+'" ('+esc(fc.confidence||'')+' confidence)').join('<br>')+
+        '<br><span style="font-size:11px;color:var(--muted)">Review and correct the fields above if needed - not auto-changed.</span>';
+    }
   }
   if(d.isSlabbed){
     setType('slabbed');
@@ -1581,6 +1634,35 @@ function fillForm(d){
   document.getElementById('content').scrollTo(0,0);
   // Suggest storage box based on where this same title/issue is already stored
   if(gv('f_title')&&gv('f_issue'))setTimeout(()=>suggestBox(gv('f_title'),gv('f_issue')),350);
+  // If the front photo came out blurry, automatically search for a clearer reference image now that the comic is identified
+  if(frontPhotoIsBlurry&&gv('f_title')&&gv('f_issue')){
+    autoFetchClearerCover(gv('f_title'),gv('f_issue'),gv('f_varletter'));
+  }
+}
+
+/* Automatically find a clearer cover photo when the scanned one is detected as blurry. Applies on save via pendingExternalCoverUrl - the original scanned photo is always kept underneath for verification purposes. */
+async function autoFetchClearerCover(title,issue,varletter){
+  const key=getKey();if(!key)return;
+  toast('Your photo looks a bit blurry - checking for a clearer cover image online...');
+  try{
+    const desc=[title,'#'+issue,varletter?'Cover '+varletter:''].filter(Boolean).join(' ');
+    const prompt=`Find a URL to a high-quality image of the front cover for this exact comic: ${desc}. Prefer official press images or high-resolution scans from sites like ComicVine, GoCollect, or MyComicShop. The URL must point directly to an image file and be publicly accessible. Return ONLY valid JSON: {"imageUrl":"direct image URL or empty if not confident","source":"site name or empty"}`;
+    const r=await fetch(WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-opus-4-5',max_tokens:400,messages:[{role:'user',content:prompt}],tools:[{type:'web_search_20250305',name:'web_search'}]})
+    });
+    const data=await r.json();
+    if(data.error)return;
+    const textBlock=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    const jsonMatch=textBlock.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)return;
+    const result=JSON.parse(jsonMatch[0]);
+    if(result.imageUrl){
+      pendingExternalCoverUrl=result.imageUrl;
+      toast('Found a clearer cover photo from '+(result.source||'the web')+' - it will be used for display, your scanned photo is still kept for verification');
+    }
+  }catch(e){/* fail silently - the scanned photo is still perfectly usable */}
 }
 
 function updateLblPill(c,id){const p=document.getElementById('lblPill');if(p){p.textContent=id;p.style.background=c;}}
@@ -2367,6 +2449,7 @@ async function doSave(){
   if(imgs[1]){const t=await makeThumbnail(imgs[1],120);if(t)imgThumb=t;}
   const comic={
     id,imgThumb,hasImg:!!(imgs[1]||imgs[2]||imgs[3])||(editId?!!coll.find(c=>c.id==editId)?.hasImg:false),
+    imgExternalUrl:pendingExternalCoverUrl||(editId?coll.find(c=>c.id==editId)?.imgExternalUrl||'':''),
     hadBackPhoto:!!imgs[2]||(editId?!!coll.find(c=>c.id==editId)?.hadBackPhoto:false),
     title:gv('f_title')||'Unknown',issue:gv('f_issue').replace(/^#+\s*/,''),volume:gv('f_volume').replace(/^vol\.?\s*/i,''),
     publisher:gv('f_publisher'),date:gv('f_date'),coverprice:gv('f_coverprice'),
@@ -2391,6 +2474,12 @@ async function doSave(){
     added:new Date().toISOString().split('T')[0],researchFlags:[],researchNotes:''
   };
   comic.researchFlags=genFlags(comic);
+  if(lastFieldConflicts&&lastFieldConflicts.length){
+    const fieldNames={title:'Title',issue:'Issue #',publisher:'Publisher',date:'Cover Date',key:'Key Issue Significance'};
+    lastFieldConflicts.forEach(fc=>{
+      comic.researchFlags.push({q:'Internet cross-check flagged '+(fieldNames[fc.field]||fc.field)+': photo/label said "'+(fc.photoSaid||'')+'", sources say "'+(fc.sourcesSay||'')+'" - please verify'});
+    });
+  }
   if(helperMode){
     if(comic.signed)comic.researchFlags.push({q:'Scanned by helper: signature detected - please verify if real, witnessed, and who signed it'});
     if(document.getElementById('helperFlagReview')?.checked)comic.researchFlags.push({q:'Helper flagged this entry as unsure - please double-check all details'});
@@ -2508,6 +2597,7 @@ function exportCSV(){
 
 function clearScan(){
   imgs={1:null,2:null,3:null};origImgs={1:null,2:null,3:null};editId=null;pendingDupId=null;clearMulti();
+  pendingExternalCoverUrl=null;frontPhotoIsBlurry=false;
   const hSum=document.getElementById('helperSummary');if(hSum)hSum.style.display='none';
   const hFlag=document.getElementById('helperFlagReview');if(hFlag)hFlag.checked=false;
   [1,2,3].forEach(n=>{
