@@ -197,6 +197,7 @@ input[type=file]{display:none}
 <div class="app">
   <div class="topbar">
     <h1>COMICVAULT</h1>
+    <span style="font-size:9px;color:rgba(255,255,255,0.4);align-self:flex-end;margin-bottom:2px">v20260906.1</span>
     <div class="pill ok" id="pill"><div class="dot"></div><span id="pillTxt">Ready</span></div>
     <button class="icon-btn ml" id="modeToggleBtn" onclick="toggleMode()" style="font-weight:600"></button>
     <button class="icon-btn" onclick="goSettings()">&#9881;</button>
@@ -660,6 +661,7 @@ input[type=file]{display:none}
     <div class="screen" id="sSettings">
       <div class="card">
         <h2>&#9881; Settings</h2>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Build: 2026-09-06-v1 &mdash; if this doesn't match what Claude expects, force-close and reopen the app after re-uploading</div>
         <div class="mb"><div class="lbl">Claude API Key</div><input type="password" id="setKey" placeholder="sk-ant-..."></div>
         <button class="btn red mb" onclick="saveSettings()">Save</button>
         <button class="btn teal mb" onclick="syncFromSheet()">&#128260; Pull latest from Google Sheet</button>
@@ -1543,12 +1545,15 @@ RULES:
 - ALSO scan the back cover for any printed edition/print-run text such as "Limited to X", "Exclusive", convention names, or similar - this is often printed near the corner or bottom of variant/exclusive covers separately from the alphanumeric code. Capture any print run number you find into printrun even if it's only on the back cover, not the front.
 - The exact location of the variant identification text on the back cover VARIES by title and printing - it is not always in the same spot. Sometimes it's a small colored text block in a corner (e.g. black text on a red background), sometimes it's plain text positioned just above the UPC/barcode, sometimes elsewhere entirely. Do not assume one fixed location - systematically scan the ENTIRE back cover image, paying particular attention to: any area near the UPC/barcode (just above, below, or beside it), all four corners, and any small text blocks that stand out from the main art/ad content. This small text is often the actual authoritative variant identifier (letter, "Cover X", or code) and should take priority over any letter guessed from the front cover art alone.
 - The FRONT cover itself often has small printed text too, especially in corners - things like the artist's name, the release date, an edition name (e.g. "Anniversary Edition", "VIP Collectible Cover", a convention/event name), or a print run number. Scan all corners and edges of the front cover image carefully for this kind of small text, not just the main title/logo area. If you find edition-related text on the front cover, use it to fill edtype, event, editionnotes, artists, and date - never leave these blank just because you only checked the label or back cover and missed text that was actually on the front.
-- Content rating: LEAVE THIS FIELD BLANK in this initial pass almost always - it will be cross-checked against documented publisher release info in a follow-up verification step, so do not guess it visually here. Many publishers (Zenescope and other small-press/indie publishers especially, but not exclusively) routinely draw characters in shorts, cut-off shirts, swimwear, and form-fitting costumes as standard house art style, which is NOT a rating tier regardless of publisher. Leave rating empty unless you have specific documented knowledge (not visual impression) that this exact cover is part of a known multi-tier release.
+- Content rating: This has two different parts - handle them differently:
+  1) NUDE is an objective visual fact, not a judgment call - if bare breasts or genitals are clearly visible on the cover with no fabric covering them, mark rating as "Nude" directly from what you see. You do NOT need documented knowledge of a multi-tier release to identify actual nudity - assess this visually every time, with confidence, the same way you'd read any other visible detail on the cover.
+  2) PG vs RISQUE is a much softer distinction that caused false positives before (normal Zenescope-style house art in shorts/swimwear/costumes was wrongly getting called "Risque"). For this boundary specifically, be conservative and visual-only is not enough: PG = any clothing with actual coverage (shorts, swimsuits, costumes, cut-off shirts - ALL of these are PG, not Risque, regardless of how form-fitting). RISQUE = genuine lingerie (bra/panty sets) or a wet-look effect where nipples are visible through soaked fabric - do not call something Risque just because it's skimpy or "sexy" looking, only for these specific criteria. When genuinely unsure whether something crosses from PG into Risque, leave it blank rather than guess - but for Nude, if you can see it, say so.
+  Leave the field entirely blank only when the cover is ambiguous or you're genuinely uncertain - not as a default when nudity is plainly visible.
 - Compilation series: many publishers (Zenescope, Marvel, DC, and others) run parody/themed variant series where cover art parodies a real-world product/brand (e.g. a character dressed as a cereal-box mascot with a parody brand name like "Camelot Crisp"), or homage series (classic album covers, movie posters, iconic comic covers reimagined). These are typically part of a named annual or themed series across multiple issues. If the cover shows this kind of parody/homage theming from ANY publisher, identify and name the series pattern (e.g. "[Year] Cereal Box Parody Series") even if you don't know the exact official series name. For other covers, only name a compilation series if you recognize it, otherwise leave empty.
 - Volume field: leave blank if only one volume of this series has ever been published - do not guess "1".
 
 Return ONLY valid JSON:
-{"title":"","issue":"","publisher":"","date":"month year","volume":"","coverprice":"","varletter":"single letter or empty","variant":"","covertype":"Standard|Cosplay|Virgin|Foil|Blank Sketch|Original Art|Metal|Connecting|Wraparound|Other","backcode":"exact code from back cover or empty","rating":"PG|Risque|Nude|Line Art|empty","compseries":"series name or empty","artists":["name1"],"writers":["name1"],"key":"","chars":["name1"],"arc":"","wraparound":false,"backHasInfo":false,"limited":false,"printrun":"","copynum":"","setpos":"","settotal":"","edtype":"Convention Exclusive|Livestream Exclusive|Store Exclusive|Retailer Exclusive|Staff Exclusive|NCW Exclusive|Kickstarter|Subscription|Diamond|Artist Proof|Publisher Direct|Anniversary/Collector Edition|Other|empty - pick the CLOSEST category if the exact wording does not match one exactly, never leave this blank if ANY edition-type text is printed on the cover/label, put unmatched exact wording in editionnotes","event":"","editionnotes":"","signed":false,"sigtype":"witnessed|unwitnessed|edition-wide|facsimile|empty","signedby":"","hasSketch":false,"sketchDesc":"","inscription":"","isSlabbed":false,"grader":"CGC|CBCS|PGX|PSA|empty","label":"Universal|Signature Series|CGC x JSA|Qualified|Restored|Pedigree|Conserved|SS Qualified|SS Restored|Custom|NG|CVR|Standard|Verified Sig|Witnessed Sig|Gold Label|empty","grade":"","pageQuality":"White|Off-White/White|Off-White|Cream/Off-White|Cream|Light Tan|Tan|Brittle|empty","serial":"","restoregrade":"","gradernotes":"any defect/qualifier notes or comments printed on the label, or empty","confidence":85,"lowConfidenceFields":"","sigConfidence":"certain|uncertain|empty","labelSigCheck":"witnessed|verified|not-specified|empty - what the label literally says about signature type, only fill if a label image was provided"}`});
+{"title":"","issue":"","publisher":"","date":"month year","volume":"","coverprice":"","varletter":"single letter or empty","variant":"","covertype":"Standard|Cosplay|Virgin|Foil|Blank Sketch|Original Art|Metal|Connecting|Wraparound|Other","backcode":"exact code from back cover or empty","rating":"PG|Risque|Nude|Line Art|empty - mark Nude directly whenever bare breasts/genitals are clearly visible, this is objective not a judgment call; be conservative only about the PG/Risque boundary","compseries":"series name or empty","artists":["name1"],"writers":["name1"],"key":"","chars":["name1"],"arc":"","wraparound":false,"backHasInfo":false,"limited":false,"printrun":"","copynum":"","setpos":"","settotal":"","edtype":"Convention Exclusive|Livestream Exclusive|Store Exclusive|Retailer Exclusive|Staff Exclusive|NCW Exclusive|Kickstarter|Subscription|Diamond|Artist Proof|Publisher Direct|Anniversary/Collector Edition|Other|empty - pick the CLOSEST category if the exact wording does not match one exactly, never leave this blank if ANY edition-type text is printed on the cover/label, put unmatched exact wording in editionnotes","event":"","editionnotes":"","signed":false,"sigtype":"witnessed|unwitnessed|edition-wide|facsimile|empty","signedby":"","hasSketch":false,"sketchDesc":"","inscription":"","isSlabbed":false,"grader":"CGC|CBCS|PGX|PSA|empty","label":"Universal|Signature Series|CGC x JSA|Qualified|Restored|Pedigree|Conserved|SS Qualified|SS Restored|Custom|NG|CVR|Standard|Verified Sig|Witnessed Sig|Gold Label|empty","grade":"","pageQuality":"White|Off-White/White|Off-White|Cream/Off-White|Cream|Light Tan|Tan|Brittle|empty","serial":"","restoregrade":"","gradernotes":"any defect/qualifier notes or comments printed on the label, or empty","confidence":85,"lowConfidenceFields":"","sigConfidence":"certain|uncertain|empty","labelSigCheck":"witnessed|verified|not-specified|empty - what the label literally says about signature type, only fill if a label image was provided"}`});
 
   try{
     setPill('busy','Analyzing...');
@@ -1992,7 +1997,7 @@ function showDetail(id){
       ${dr('Page quality',c.pages)}${dr('Serial / Cert #',c.serial)}
       ${c.restoregrade?dr('Restoration grade',c.restoregrade):''}
       ${dr('Grader notes',c.gradernotes)}
-      ${c.censusAtGrade!=null?dr('CGC Census',c.censusAtGrade+' at this grade, '+(c.censusHigher||0)+' graded higher'+(c.censusTotal?' ('+c.censusTotal+' total census)':'')):''}
+      ${c.censusAtGrade!=null?dr('CGC Census',c.censusAtGrade+' at this grade, '+(c.censusHigher||0)+' graded higher'+(c.censusTotal?' ('+c.censusTotal+' total census)':'')):(c.censusChecked?dr('CGC Census','Not found - '+(c.censusNote||'try "Check Census" again or view on CGC directly')):'')}
       ${c.censusChecked?dr('Census checked',c.censusChecked):''}
     </div>`:''}
     ${isSigned?`<div class="dtbl"><div class="dth">Signature</div>
@@ -2012,7 +2017,7 @@ function showDetail(id){
       ${dr('Sale Price',c.sale?`<span style="color:var(--teal);font-weight:600">$${c.sale.toFixed(2)}</span>`:'--')}${dr('Sale Date',c.saledate||'--')}
     </div>
     <button class="btn-sm" id="mvBtn" onclick="checkMarketValue('${c.id}',${c.marketChecked?'true':'false'})" style="margin-bottom:12px;background:var(--teal-l);border-color:var(--teal);color:#0F5038">&#128269; ${c.marketChecked?'Refresh':'Check'} Market Value</button>
-    ${(c.type==='slabbed'&&c.gradeco==='CGC'&&c.serial&&c.serial.trim())?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--blue-l);border-color:var(--blue);color:#0C447C" onclick="verifyWithCGC('${c.id}')">&#128737;&#65039; Verify via CGC Lookup</button><a href="https://www.cgccomics.com/certlookup/${esc(c.serial.trim())}/" target="_blank" rel="noopener" class="btn-sm" style="margin-bottom:12px;margin-left:8px;display:inline-block;text-decoration:none;background:var(--bg2);border:0.5px solid var(--border2);color:var(--text)">&#128279; Open CGC Page</a>`:''}
+    ${(c.type==='slabbed'&&c.gradeco==='CGC'&&c.serial&&c.serial.trim())?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--blue-l);border-color:var(--blue);color:#0C447C" onclick="verifyWithCGC('${c.id}')">&#128737;&#65039; Verify via CGC Lookup</button><button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--purple-l);border-color:var(--purple);color:#3C3489" onclick="checkCensus('${c.id}')">&#128202; Check Census</button><a href="https://www.cgccomics.com/certlookup/${esc(c.serial.trim())}/" target="_blank" rel="noopener" class="btn-sm" style="margin-bottom:12px;margin-left:8px;display:inline-block;text-decoration:none;background:var(--bg2);border:0.5px solid var(--border2);color:var(--text)">&#128279; Open CGC Page</a>`:''}
     <button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--gold-l);border-color:var(--gold);color:var(--gold-d)" onclick="findBetterCoverPhoto('${c.id}')">&#127760; ${c.imgExternalUrl?'Change':'Find'} Better Cover Photo</button>
     ${(c.limited&&!c.printrun)?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--gold-l);border-color:var(--gold);color:var(--gold-d)" onclick="lookupPrintRunForComic('${c.id}')">&#128269; Look Up Print Run</button>`:''}
     ${c.imgExternalUrl?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px" onclick="removeCoverPhoto('${c.id}')">Use my scanned photo instead</button>`:''}
@@ -2315,6 +2320,46 @@ function saveQuickEdit(){
 function ebay(title,issue,grader,grade){const q=encodeURIComponent([title,issue,grader,grade,'comic'].filter(Boolean).join(' '));window.open('https://www.ebay.com/sch/i.html?_nkw='+q+'&_sacat=259104&LH_Sold=1&LH_Complete=1','_blank');}
 
 /* CGC CERTIFICATION VERIFICATION - cross-check what we have on file against CGC's own public cert lookup, using the serial number as the authoritative key */
+/* Dedicated Census check - separate from the full CGC verify, focused purely on population data so it's fast, and always gives you a clear result whether or not data was found */
+async function checkCensus(id){
+  const key=getKey();
+  if(!key){toast('Add your Claude API key in Settings');return;}
+  const c=coll.find(x=>x.id==id);if(!c)return;
+  toast('Checking CGC Census for '+c.title+' #'+c.issue+'...');
+  try{
+    const desc=[c.title,'#'+c.issue,c.varletter?'Cover '+c.varletter:'',c.variant].filter(Boolean).join(' ');
+    const prompt=`Go to CGC's Census/Population report tool (cgccomics.com census search, or the Census tab linked from the certification lookup page https://www.cgccomics.com/certlookup/${c.serial.trim()}/) for this exact comic: ${desc}, label type "${c.label||'Universal'}". Find how many copies of THIS EXACT book/label-type are recorded in CGC's census at grade ${c.grade}, and how many are recorded at any grade HIGHER than ${c.grade}. Return ONLY valid JSON: {"found":true,"censusAtGrade":0,"censusHigher":0,"censusTotal":0,"note":"any caveat, e.g. label type ambiguity"} - if you cannot find census data for this specific book after actually checking, return {"found":false,"note":"why not, e.g. census not available for this title, or too new to have data"}`;
+    const r=await fetch(WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-opus-4-5',max_tokens:600,messages:[{role:'user',content:prompt}],tools:[{type:'web_search_20250305',name:'web_search'}]})
+    });
+    const data=await r.json();
+    if(data.error)throw new Error(data.error.message);
+    const textBlock=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    const jsonMatch=textBlock.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)throw new Error('Could not parse result');
+    const result=JSON.parse(jsonMatch[0]);
+    if(!result.found){
+      toast('No census data found'+(result.note?': '+result.note:' for this specific book - it may be too new, or CGC census may not be broken out by this label/variant'));
+      c.censusNote=result.note||'Not found';
+      c.censusChecked=new Date().toISOString().split('T')[0];
+      saveColl();showDetail(id);
+      return;
+    }
+    c.censusAtGrade=result.censusAtGrade;
+    c.censusHigher=result.censusHigher;
+    c.censusTotal=result.censusTotal;
+    c.censusNote=result.note||'';
+    c.censusChecked=new Date().toISOString().split('T')[0];
+    saveColl();
+    toast('Census: '+result.censusAtGrade+' at grade '+c.grade+', '+result.censusHigher+' graded higher');
+    showDetail(id);
+  }catch(err){
+    toast('Census check failed: '+err.message);
+  }
+}
+
 async function verifyWithCGC(id,silent){
   const key=getKey();
   if(!key){if(!silent)toast('Add your Claude API key in Settings');return;}
