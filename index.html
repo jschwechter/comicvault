@@ -1580,13 +1580,15 @@ Also: if this cover is part of a broader named/branded compilation series (a the
 Return ONLY valid JSON: {"printrun":"","edtype":"","event":"","artists":[],"writers":[],"pageQuality":"","serial":"","additionalNotes":"","varConflict":"only fill if you have strong reason to believe the variant letter is wrong, else empty","rating":"PG|Risque|Nude|Line Art|empty - only if documented, else empty","compseries":"series name or empty","seriesMembers":"comma-separated other known entries in this series or empty","fieldConflicts":[]}`;
         const vr=await callClaude(vp);
         const verified=JSON.parse(vr);
-        if(!result.printrun&&verified.printrun)result.printrun=verified.printrun;
+        // Track which fields get confidently resolved here, so we can stop telling the user to "verify" something that's now independently confirmed
+        const resolvedFields=[];
+        if(!result.printrun&&verified.printrun){result.printrun=verified.printrun;resolvedFields.push('printrun');}
         if(!result.edtype&&verified.edtype)result.edtype=verified.edtype;
         if(!result.event&&verified.event)result.event=verified.event;
-        if((!result.artists||!result.artists.length)&&verified.artists&&verified.artists.length)result.artists=verified.artists;
-        if((!result.writers||!result.writers.length)&&verified.writers&&verified.writers.length)result.writers=verified.writers;
-        if(!result.pageQuality&&verified.pageQuality)result.pageQuality=verified.pageQuality;
-        if(!result.serial&&verified.serial)result.serial=verified.serial;
+        if((!result.artists||!result.artists.length)&&verified.artists&&verified.artists.length){result.artists=verified.artists;resolvedFields.push('artists');}
+        if((!result.writers||!result.writers.length)&&verified.writers&&verified.writers.length){result.writers=verified.writers;resolvedFields.push('writers');}
+        if(!result.pageQuality&&verified.pageQuality){result.pageQuality=verified.pageQuality;resolvedFields.push('pageQuality');}
+        if(!result.serial&&verified.serial){result.serial=verified.serial;resolvedFields.push('serial');}
         if(verified.additionalNotes)result._notes=verified.additionalNotes;
         if(verified.varConflict)result._varConflict=verified.varConflict;
         if(verified.fieldConflicts&&verified.fieldConflicts.length)result._fieldConflicts=verified.fieldConflicts;
@@ -1594,6 +1596,12 @@ Return ONLY valid JSON: {"printrun":"","edtype":"","event":"","artists":[],"writ
         if(verified.rating)result.rating=verified.rating;
         if(!result.compseries&&verified.compseries)result.compseries=verified.compseries;
         if(verified.seriesMembers)result.seriesMembers=verified.seriesMembers;
+        // Remove any resolved field names from the low-confidence warning list - a field confidently confirmed via independent online lookup no longer needs the user to manually re-verify it
+        if(resolvedFields.length&&result.lowConfidenceFields){
+          let lcf=result.lowConfidenceFields;
+          resolvedFields.forEach(f=>{lcf=lcf.replace(new RegExp('\\\\b'+f+'\\\\b,?\\\\s*','gi'),'');});
+          result.lowConfidenceFields=lcf.replace(/,\s*$/,'').trim();
+        }
       }catch(e){console.log('Verify step:',e);}
     }
 
@@ -2530,7 +2538,7 @@ async function doSave(){
     auth:sigtype==='witnessed'?gv('f_auth'):'',inscription:gv('f_inscription'),hasSketch,sketchDesc:hasSketch?gv('f_sketchDesc'):'',
     qty:isSlab||isSigned?1:(parseInt(gv('f_qty'))||1),condition:cond,
     rawbox:(curType==='raw'||curType==='signed')?gv('f_rawbox'):'',signbox:'',slabbox:isSlab?gv('f_slabbox'):'',
-    gradeco:isSlab?gv('f_grader'):'',label:isSlab?selLabel:'',
+    gradeco:isSlab?gv('f_grader'):'',label:isSlab?selLabel:'',grade:isSlab?gv('f_grade'):'',
     pages:isSlab?gv('f_pages'):'',serial:isSlab?gv('f_serial'):'',restoregrade:isSlab?gv('f_restore'):'',gradernotes:isSlab?gv('f_gradernotes'):'',
     limited:hasLtd,printrun:gv('f_printrun'),copynum:gv('f_copynum'),numtype:gv('f_numtype'),
     setpos:gv('f_setpos'),settotal:gv('f_settotal'),companions:gv('f_companions'),
