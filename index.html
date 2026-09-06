@@ -1420,7 +1420,8 @@ RULES:
 - Page quality is on the CGC/CBCS label text
 - Serial = long number on barcode area of label. This number is used to look up the exact comic later, so accuracy matters more than for most fields. Before finalizing this field: read the number twice independently, digit by digit, then compare your two readings - if they match, use that number; if they don't match, that means the image isn't clear enough for a confident read, so put your best single reading in serial AND add "serial" to lowConfidenceFields so it gets flagged for a human to double check against the physical label. Digits like 3/8/9, 1/7, and 0/6 are commonly confused - never rush this field.
 - Grade = the large numeric grade printed prominently in a box on the label (e.g. "9.8"). This is one of the most visually prominent elements on any graded label - if a label image is provided, this number should be easy to read confidently. WORKFLOW NOTE: for every slabbed comic scan, a dedicated close-up label photo is always taken specifically because it clearly shows the grade in large numbers - so if isSlabbed is true and a label image was provided, you should treat finding the grade as close to guaranteed, not optional. If you genuinely cannot find it despite a label image being present, look again carefully before giving up, and if still unreadable add "grade" to lowConfidenceFields rather than silently leaving it empty - this should be a rare exception, not routine.
-- If a BACK cover image is provided, scan the ENTIRE back cover carefully for a printed alphanumeric code (e.g. "GFTV285N") - it can appear anywhere on the back (top, bottom, corner, near barcode, near price, anywhere), not just one fixed spot. This code encodes title abbreviation + volume + issue + variant letter and is usually present on standard/limited-edition releases, but is often ABSENT on showcase, gallery, or special art-only backs. Read it exactly as printed into backcode; leave blank if genuinely not present rather than guessing.
+- If a BACK cover image is provided, scan the ENTIRE back cover carefully for a printed alphanumeric code (e.g. "GFTV285N") - it can appear anywhere on the back (top, bottom, corner, near barcode, near price, anywhere), not just one fixed spot. This code encodes title abbreviation + volume + issue + variant letter and is usually present on standard/limited-edition releases, but is often ABSENT on showcase, gallery, or special art-only backs. Read it exactly as printed into backcode; leave blank if genuinely not present rather than guessing. THIS APPLIES EQUALLY TO SLABBED COMICS - a back cover photo of a comic inside a graded slab still shows this same back cover printing through the clear plastic, so scan it the same way you would for a raw comic. Never skip back cover analysis just because the comic is slabbed.
+- Some back cover codes or nearby text include an actual print run number or individual copy number embedded alongside the title/issue/variant portion (e.g. a code followed by "/250" or a separate "LTD 250" nearby) - if you see numbers that look like a print run or copy number near the back cover code, extract those into printrun/copynum as well, don't just capture the letter-code portion.
 - ALSO scan the back cover for any printed edition/print-run text such as "Limited to X", "Exclusive", convention names, or similar - this is often printed near the corner or bottom of variant/exclusive covers separately from the alphanumeric code. Capture any print run number you find into printrun even if it's only on the back cover, not the front.
 - The exact location of the variant identification text on the back cover VARIES by title and printing - it is not always in the same spot. Sometimes it's a small colored text block in a corner (e.g. black text on a red background), sometimes it's plain text positioned just above the UPC/barcode, sometimes elsewhere entirely. Do not assume one fixed location - systematically scan the ENTIRE back cover image, paying particular attention to: any area near the UPC/barcode (just above, below, or beside it), all four corners, and any small text blocks that stand out from the main art/ad content. This small text is often the actual authoritative variant identifier (letter, "Cover X", or code) and should take priority over any letter guessed from the front cover art alone.
 - Content rating: LEAVE THIS FIELD BLANK in this initial pass almost always - it will be cross-checked against documented publisher release info in a follow-up verification step, so do not guess it visually here. Zenescope and similar publishers routinely draw characters in shorts, cut-off shirts, swimwear, and form-fitting costumes as standard house art style, which is NOT a rating tier. Leave rating empty unless you have specific documented knowledge (not visual impression) that this exact cover is part of a known multi-tier release.
@@ -1816,6 +1817,8 @@ function showDetail(id){
       ${dr('Page quality',c.pages)}${dr('Serial / Cert #',c.serial)}
       ${c.restoregrade?dr('Restoration grade',c.restoregrade):''}
       ${dr('Grader notes',c.gradernotes)}
+      ${c.censusAtGrade!=null?dr('CGC Census',c.censusAtGrade+' at this grade, '+(c.censusHigher||0)+' graded higher'+(c.censusTotal?' ('+c.censusTotal+' total census)':'')):''}
+      ${c.censusChecked?dr('Census checked',c.censusChecked):''}
     </div>`:''}
     ${isSigned?`<div class="dtbl"><div class="dth">Signature</div>
       ${dr('Signature type',c.sigtype)}${dr('Signed by',c.signedby)}
@@ -1834,7 +1837,7 @@ function showDetail(id){
       ${dr('Sale Price',c.sale?`<span style="color:var(--teal);font-weight:600">$${c.sale.toFixed(2)}</span>`:'--')}${dr('Sale Date',c.saledate||'--')}
     </div>
     <button class="btn-sm" id="mvBtn" onclick="checkMarketValue('${c.id}',${c.marketChecked?'true':'false'})" style="margin-bottom:12px;background:var(--teal-l);border-color:var(--teal);color:#0F5038">&#128269; ${c.marketChecked?'Refresh':'Check'} Market Value</button>
-    ${(c.type==='slabbed'&&c.gradeco==='CGC'&&c.serial&&c.serial.trim())?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--blue-l);border-color:var(--blue);color:#0C447C" onclick="verifyWithCGC('${c.id}')">&#128737;&#65039; Verify via CGC Lookup</button>`:''}
+    ${(c.type==='slabbed'&&c.gradeco==='CGC'&&c.serial&&c.serial.trim())?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--blue-l);border-color:var(--blue);color:#0C447C" onclick="verifyWithCGC('${c.id}')">&#128737;&#65039; Verify via CGC Lookup</button><a href="https://www.cgccomics.com/certlookup/${esc(c.serial.trim())}/" target="_blank" rel="noopener" class="btn-sm" style="margin-bottom:12px;margin-left:8px;display:inline-block;text-decoration:none;background:var(--bg2);border:0.5px solid var(--border2);color:var(--text)">&#128279; Open CGC Page</a>`:''}
     <button class="btn-sm" style="margin-bottom:12px;margin-left:8px;background:var(--gold-l);border-color:var(--gold);color:var(--gold-d)" onclick="findBetterCoverPhoto('${c.id}')">&#127760; ${c.imgExternalUrl?'Change':'Find'} Better Cover Photo</button>
     ${c.imgExternalUrl?`<button class="btn-sm" style="margin-bottom:12px;margin-left:8px" onclick="removeCoverPhoto('${c.id}')">Use my scanned photo instead</button>`:''}
     ${c.notes?`<div class="dtbl"><div class="dth">Notes</div><div style="padding:10px 12px;font-size:13px;line-height:1.5;color:var(--muted)">${esc(c.notes)}</div></div>`:''}
@@ -2098,11 +2101,11 @@ async function verifyWithCGC(id){
   const c=coll.find(x=>x.id==id);if(!c)return;
   toast('Looking up CGC certification '+c.serial+'...');
   try{
-    const prompt=`Look up CGC certification number ${c.serial} using CGC's official public certification verification tool at cgccomics.com/certlookup (or equivalent public CGC cert lookup). Find the officially recorded details for this exact certification number. Return ONLY valid JSON: {"found":true,"title":"","issue":"","publisher":"","grade":"","label":"","pageQuality":"","signedBy":"or empty if not signed","url":"the cgc lookup page URL you found, or empty"} - if you cannot find this cert number or are not confident in the result, return {"found":false}`;
+    const prompt=`Fetch this exact URL and read the CGC certification record it shows: https://www.cgccomics.com/certlookup/${c.serial.trim()}/ - Find the officially recorded details for this certification number: title, issue, publisher, grade, label type, page quality, signer name if signed, and the creative team credits (writer/artist) if listed. Also find the CGC Census data for this exact book/issue/variant: how many copies are recorded at this exact grade, and how many copies are recorded at a HIGHER grade than this one (census data is usually on a separate "Census" tab or section for the same book). Return ONLY valid JSON: {"found":true,"title":"","issue":"","publisher":"","grade":"","label":"","pageQuality":"","signedBy":"or empty if not signed","writers":["name"],"artists":["name"],"censusAtGrade":0,"censusHigher":0,"censusTotal":0,"url":"https://www.cgccomics.com/certlookup/${c.serial.trim()}/"} - if that page shows no result or an error for this cert number, return {"found":false}. Leave census fields as null if you cannot find census data, don't guess.`;
     const r=await fetch(WORKER,{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
-      body:JSON.stringify({model:'claude-opus-4-5',max_tokens:800,messages:[{role:'user',content:prompt}],tools:[{type:'web_search_20250305',name:'web_search'}]})
+      body:JSON.stringify({model:'claude-opus-4-5',max_tokens:900,messages:[{role:'user',content:prompt}],tools:[{type:'web_search_20250305',name:'web_search'}]})
     });
     const data=await r.json();
     if(data.error)throw new Error(data.error.message);
@@ -2111,6 +2114,18 @@ async function verifyWithCGC(id){
     if(!jsonMatch)throw new Error('Could not parse CGC lookup result');
     const cgc=JSON.parse(jsonMatch[0]);
     if(!cgc.found){toast('Could not find this cert number on CGC\'s public lookup - it may not be publicly searchable');return;}
+
+    // Store census data regardless of other matches - this is new informational data, not something to confirm
+    if(cgc.censusAtGrade!=null||cgc.censusHigher!=null){
+      c.censusAtGrade=cgc.censusAtGrade;
+      c.censusHigher=cgc.censusHigher;
+      c.censusTotal=cgc.censusTotal;
+      c.censusChecked=new Date().toISOString().split('T')[0];
+    }
+    // Auto-fill artists/writers from CGC's credits if we don't have them yet (not a conflict, just filling a gap)
+    let filledCredits=false;
+    if((!c.artists||!c.artists.trim())&&cgc.artists&&cgc.artists.length){c.artists=cgc.artists.join(', ');filledCredits=true;}
+    if((!c.writers||!c.writers.trim())&&cgc.writers&&cgc.writers.length){c.writers=cgc.writers.join(', ');filledCredits=true;}
 
     // Compare what CGC has on record against what we have saved, field by field
     const compareFields=[
@@ -2125,9 +2140,12 @@ async function verifyWithCGC(id){
     const norm=s=>String(s||'').toLowerCase().trim();
     const mismatches=compareFields.filter(f=>f.cgc&&norm(f.ours)!==norm(f.cgc));
     const matches=compareFields.filter(f=>f.cgc&&norm(f.ours)===norm(f.cgc));
+    const censusNote=cgc.censusAtGrade!=null?' Census: '+cgc.censusAtGrade+' at this grade, '+(cgc.censusHigher||0)+' graded higher.':'';
 
     if(!mismatches.length){
-      toast('Verified! All '+matches.length+' checked fields match CGC\'s official record.'+(cgc.url?' ('+cgc.url+')':''));
+      saveColl();
+      toast('Verified! All '+matches.length+' checked fields match.'+(filledCredits?' Filled in creative credits.':'')+censusNote);
+      showDetail(id);
       return;
     }
 
@@ -2146,7 +2164,10 @@ async function verifyWithCGC(id){
       });
       c.researchFlags=genFlags(c);
       saveColl();
-      toast('Updated with CGC\'s official record');
+      toast('Updated with CGC\'s official record.'+censusNote);
+      showDetail(id);
+    }else{
+      saveColl(); // still keep the census data / credit fills even if they declined the mismatch corrections
       showDetail(id);
     }
   }catch(err){
@@ -2423,8 +2444,8 @@ async function syncFromSheet(){
 
 function exportCSV(){
   if(!coll.length){toast('No comics to export');return;}
-  const headers=['ID','Title','Issue','Volume','Publisher','Cover Date','Cover Price','Variant Letter','Variant','Cover Type','Back Cover Code','Content Rating','Compilation Series','Other In Series','Artists','Writers','Key Issue','Characters','Story Arc','Type','Signed','Sig Type','Signed By','Authentication','Inscription','Has Sketch','Sketch Description','Qty','Condition','Raw Box','Signed Box','Slab Box','Grader','Label','Grade','Page Quality','Serial #','Restore Grade','Grader Notes','Limited','Print Run','Copy #','Numbering','Set Position','Set Total','Companion Covers','Edition Type','Event','Edition Notes','Info Source','Purchase $','Purchase Date','Source','Declared Value $','Market $','Sale $','Sale Date','Notes','In Consignment','Consignment Shop','Consignment Date','Consignment Terms','Consignment Notes','Research Flags','Added'];
-  const rows=coll.map(c=>[c.id,c.title,c.issue,c.volume,c.publisher,c.date,c.coverprice,c.varletter,c.variant,c.covertype,c.backcode,c.rating,c.compseries,c.seriesMembers,c.artists,c.writers,c.key,c.chars,c.arc,c.type==='slabbed'?'Slabbed':c.type==='signed'?'Signed':'Raw',c.signed?'Yes':'',c.sigtype,c.signedby,c.auth,c.inscription,c.hasSketch?'Yes':'',c.sketchDesc,c.qty||1,c.condition,c.rawbox,c.signbox,c.slabbox,c.gradeco,c.label,c.grade,c.pages,c.serial,c.restoregrade,c.gradernotes,c.limited?'Yes':'',c.printrun,c.copynum,c.numtype,c.setpos,c.settotal,c.companions,c.edtype,c.event,c.editionnotes,c.infoSrc,c.purchase||'',c.purchasedate,c.source,c.declaredval||'',c.marketval||'',c.sale||'',c.saledate,c.notes,c.consignment?'Yes':'',c.consignShop,c.consignDate,c.consignTerms,c.consignNotes,c.researchFlags&&c.researchFlags.length?c.researchFlags.map(f=>f.q).join(' | '):'',c.added].map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(','));
+  const headers=['ID','Title','Issue','Volume','Publisher','Cover Date','Cover Price','Variant Letter','Variant','Cover Type','Back Cover Code','Content Rating','Compilation Series','Other In Series','Artists','Writers','Key Issue','Characters','Story Arc','Type','Signed','Sig Type','Signed By','Authentication','Inscription','Has Sketch','Sketch Description','Qty','Condition','Raw Box','Signed Box','Slab Box','Grader','Label','Grade','Page Quality','Serial #','Restore Grade','Grader Notes','Census At Grade','Census Higher','Census Total','Limited','Print Run','Copy #','Numbering','Set Position','Set Total','Companion Covers','Edition Type','Event','Edition Notes','Info Source','Purchase $','Purchase Date','Source','Declared Value $','Market $','Sale $','Sale Date','Notes','In Consignment','Consignment Shop','Consignment Date','Consignment Terms','Consignment Notes','Research Flags','Added'];
+  const rows=coll.map(c=>[c.id,c.title,c.issue,c.volume,c.publisher,c.date,c.coverprice,c.varletter,c.variant,c.covertype,c.backcode,c.rating,c.compseries,c.seriesMembers,c.artists,c.writers,c.key,c.chars,c.arc,c.type==='slabbed'?'Slabbed':c.type==='signed'?'Signed':'Raw',c.signed?'Yes':'',c.sigtype,c.signedby,c.auth,c.inscription,c.hasSketch?'Yes':'',c.sketchDesc,c.qty||1,c.condition,c.rawbox,c.signbox,c.slabbox,c.gradeco,c.label,c.grade,c.pages,c.serial,c.restoregrade,c.gradernotes,c.censusAtGrade,c.censusHigher,c.censusTotal,c.limited?'Yes':'',c.printrun,c.copynum,c.numtype,c.setpos,c.settotal,c.companions,c.edtype,c.event,c.editionnotes,c.infoSrc,c.purchase||'',c.purchasedate,c.source,c.declaredval||'',c.marketval||'',c.sale||'',c.saledate,c.notes,c.consignment?'Yes':'',c.consignShop,c.consignDate,c.consignTerms,c.consignNotes,c.researchFlags&&c.researchFlags.length?c.researchFlags.map(f=>f.q).join(' | '):'',c.added].map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(','));
   const csv=[headers.join(','),...rows].join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='ComicVault_Collection.csv';a.click();toast('CSV exported!');
 }
